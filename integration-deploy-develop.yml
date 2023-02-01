@@ -1,0 +1,125 @@
+name: CI Beta
+
+on:
+  pull_request_target:
+    types:
+      - closed
+    branches:
+      - develop
+    paths-ignore:
+      - '.github/**'
+      
+  workflow_dispatch:
+    inputs:
+      apiCommunication:
+        description: 'API Communication'
+        required: true
+        default: 'Partner API'
+        type: choice
+        options:
+        - Partner API
+        - Mock API
+
+jobs:
+  building:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
+    name: Building project
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Building and Uploading Docker Image to ECR
+        run: |
+          export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
+          export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
+          export IMAGE_NAME="${{secrets.CR_INTEGRATIONS}}/$PROJECT_NAME"
+          export STAGE_RUN_SCRIPT="beta_docker"
+
+          if [[ '${{github.event.inputs.apiCommunication}}' = 'Mock API' ]]; then
+            export STAGE_RUN_SCRIPT="beta_mock_docker"
+          fi
+
+          docker image build \
+            --build-arg INTEGRATION_CORE_KEY="${{secrets.INTEGRATION_CORE_KEY}}" \
+            --build-arg STAGE_RUN_SCRIPT="$STAGE_RUN_SCRIPT" \
+            -t $PROJECT_NAME:$IMAGE_TAG \
+            -t $PROJECT_NAME:latest \
+            -f Dockerfile_ci .
+              
+          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{secrets.CR_INTEGRATIONS}}
+          
+          docker image tag $PROJECT_NAME:latest $IMAGE_NAME:latest
+          docker image tag $PROJECT_NAME:latest $IMAGE_NAME:$IMAGE_TAG
+          docker image push $IMAGE_NAME:latest
+          docker image push $IMAGE_NAME:$IMAGE_TAG
+          
+          echo "################# Uploaded docker image to AWS ##################"
+          echo "Pushed image $IMAGE_NAME:latest"
+          echo "Pushed image $IMAGE_NAME:$IMAGE_TAG"
+          
+          if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
+            docker image tag $PROJECT_NAME:latest $IMAGE_NAME:pre-build
+            docker image push $IMAGE_NAME:pre-build
+            echo "Pushed image $IMAGE_NAME:pre-build"
+          fi
+
+  deploying:
+    if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
+    name: Deploying project
+    runs-on: ubuntu-latest
+    needs: building
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Setting SSH
+        run: |
+          mkdir ~/.ssh
+          printf "Host *\n\tStrictHostKeyChecking no" > ~/.ssh/config
+          echo '${{secrets.BETA_SSH_PRIVATE_KEY}}' > ~/.ssh/id_rsa
+          chmod 400 ~/.ssh/*
+
+      - name: Deploy on Beta Server
+        run: |
+          export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
+          export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
+          export IMAGE_NAME="${{secrets.CR_INTEGRATIONS}}/$PROJECT_NAME"
+          export CONTAINER_RUN_OPTS="-d"
+          export CONTAINER_CMD="npm run beta_docker"
+          export HOSTS="api-beta.finanzero.com.br"
+          export GREEN='\033[0;32m'
+          export PUBLISHING="true"
+
+          if [[ '${{github.event.inputs.apiCommunication}}' = 'Mock API' ]]; then
+            export CONTAINER_CMD="npm run beta_mock_docker"
+          fi
+          
+          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{secrets.CR_INTEGRATIONS}}
+
+          for HOST in $HOSTS; do
+            export DOCKER_HOST="ssh://ubuntu@${HOST}"
+
+            echo -e '${GREEN}################# ${HOST} logs #################'
+              
+            docker pull $IMAGE_NAME:$IMAGE_TAG
+
+            docker container rm -f $PROJECT_NAME >& /dev/null || echo "No container removal needed"
+
+            docker container run $CONTAINER_RUN_OPTS --net=host -v /var/log/finanzero/$PROJECT_NAME:/app/logs --name $PROJECT_NAME $IMAGE_NAME:$IMAGE_TAG $CONTAINER_CMD
+              
+            docker container logs --tail 10 $PROJECT_NAME
+          done
+
+          echo "Project published successfully on beta"
