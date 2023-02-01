@@ -12,13 +12,8 @@ on:
   workflow_call:
     inputs:
       apiCommunication:
-        description: 'API Communication'
         required: true
-        default: 'Partner API'
-        type: choice
-        options:
-        - Partner API
-        - Mock API
+        type: string
 
 jobs:
   building:
