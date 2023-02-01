@@ -1,4 +1,4 @@
-name: CI Beta
+name: Integration Global CI - Beta
 
 on:
   pull_request_target:
