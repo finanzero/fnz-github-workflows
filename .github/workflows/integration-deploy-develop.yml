@@ -14,7 +14,7 @@ on:
       apiCommunication:
         required: true
         type: string
-    secret:
+    secrets:
       AWS_ACCESS_KEY_ID:
         required: true
       AWS_SECRET_ACCESS_KEY:
