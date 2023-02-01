@@ -17,7 +17,7 @@ on:
 
 jobs:
   building:
-    if: github.event.pull_request.merged == true || ${{ inputs.apiCommunication }} == 'Partner API' || ${{ inputs.apiCommunication }} == 'Mock API'
+    if: github.event.pull_request.merged == true || "${{ inputs.apiCommunication }}" == 'Partner API' || "${{ inputs.apiCommunication }}" == 'Mock API'
     name: Building project
     runs-on: ubuntu-latest
 
@@ -27,7 +27,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: sa-east-1
 
       - name: Building and Uploading Docker Image to ECR
         run: |
