@@ -17,7 +17,7 @@ on:
 
 jobs:
   building:
-    if: github.event.pull_request.merged == true || ${{ inputs.apiCommunication }} != 'Partner API' || ${{ inputs.apiCommunication }} != 'Mock API'
+    if: github.event.pull_request.merged == true || ${{ inputs.apiCommunication }} == 'Partner API' || ${{ inputs.apiCommunication }} == 'Mock API'
     name: Building project
     runs-on: ubuntu-latest
 
