@@ -2,6 +2,10 @@ name: Integration Global CI - Production
 
 on:      
   workflow_call:
+    inputs:
+      reason:
+        required: true
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
