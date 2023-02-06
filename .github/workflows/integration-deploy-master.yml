@@ -1,11 +1,7 @@
-name: Integration Global CI - Beta
+name: Integration Global CI - Production
 
 on:      
   workflow_call:
-    inputs:
-      apiCommunication:
-        required: true
-        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -15,7 +11,7 @@ on:
         required: true
       INTEGRATION_CORE_KEY:
         required: true
-      BETA_SSH_PRIVATE_KEY:
+      PARTNERS_SSH_PRIVATE_KEY:
         required: true
 
 jobs:
@@ -36,11 +32,7 @@ jobs:
           export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
           export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
           export IMAGE_NAME="${{secrets.CR_INTEGRATIONS}}/$PROJECT_NAME"
-          export STAGE_RUN_SCRIPT="beta_docker"
-
-          if [[ '${{github.event.inputs.apiCommunication}}' = 'Mock API' ]]; then
-            export STAGE_RUN_SCRIPT="beta_mock_docker"
-          fi
+          export STAGE_RUN_SCRIPT="production_docker"
 
           docker image build \
             --build-arg INTEGRATION_CORE_KEY="${{secrets.INTEGRATION_CORE_KEY}}" \
@@ -85,23 +77,19 @@ jobs:
         run: |
           mkdir ~/.ssh
           printf "Host *\n\tStrictHostKeyChecking no" > ~/.ssh/config
-          echo '${{secrets.BETA_SSH_PRIVATE_KEY}}' > ~/.ssh/id_rsa
+          echo '${{secrets.PARTNERS_SSH_PRIVATE_KEY}}' > ~/.ssh/id_rsa
           chmod 400 ~/.ssh/*
 
-      - name: Deploy on Beta Server
+      - name: Deploy on Production Server
         run: |
           export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
           export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
           export IMAGE_NAME="${{secrets.CR_INTEGRATIONS}}/$PROJECT_NAME"
           export CONTAINER_RUN_OPTS="-d"
-          export CONTAINER_CMD="npm run beta_docker"
-          export HOSTS="api-beta.finanzero.com.br"
+          export CONTAINER_CMD="npm run production_docker"
+          export HOSTS="partners.finanzero.com.br"
           export GREEN='\033[0;32m'
           export PUBLISHING="true"
-
-          if [[ '${{github.event.inputs.apiCommunication}}' = 'Mock API' ]]; then
-            export CONTAINER_CMD="npm run beta_mock_docker"
-          fi
           
           aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{secrets.CR_INTEGRATIONS}}
 
@@ -119,4 +107,4 @@ jobs:
             docker container logs --tail 10 $PROJECT_NAME
           done
 
-          echo "Project published successfully on beta"
+          echo "Project published successfully on production"
