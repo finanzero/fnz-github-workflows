@@ -20,6 +20,7 @@ on:
 
 jobs:
   building:
+    if: github.event.pull_request.merged == true
     name: Building project
     runs-on: ubuntu-latest
 
