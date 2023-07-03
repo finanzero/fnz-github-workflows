@@ -1,6 +1,6 @@
 name: Workflow for Testing
 
-on:      
+on:
   workflow_dispatch:
 
 jobs:
@@ -19,5 +19,4 @@ jobs:
 
       - name: Setting SSH
         run: |
-          echo $TEST_VAR
-          
+          echo ">>> ${{ env.TEST_VAR }}"
