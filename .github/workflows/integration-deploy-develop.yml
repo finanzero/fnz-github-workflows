@@ -49,7 +49,9 @@ jobs:
             -t $PROJECT_NAME:$IMAGE_TAG \
             -t $PROJECT_NAME:latest \
             -f Dockerfile_ci .
-              
+
+          aws ecr describe-repositories --repository-names $PROJECT_NAME || aws ecr create-repository --repository-name $PROJECT_NAME
+
           aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{secrets.CR_INTEGRATIONS}}
           
           docker image tag $PROJECT_NAME:latest $IMAGE_NAME:latest
