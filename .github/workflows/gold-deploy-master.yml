@@ -23,6 +23,17 @@ on:
         required: true
 
 jobs:
+  preparing:
+    name: Validate variables
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate variables
+        run: |
+          echo "platform: ${{github.event.inputs.target_platform}}"
+          echo "servers: ${{github.event.inputs.servers}}"
+          echo "service_port: ${{github.event.inputs.service_port}}"
+          echo "ecr_name: ${{github.event.inputs.ecr_name}}"
+
   building:
     name: Building project
     runs-on:
