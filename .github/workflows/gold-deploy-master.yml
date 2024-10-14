@@ -64,7 +64,7 @@ jobs:
               -f ./Dockerfile_${{inputs.target_platform}} .
               
           aws ecr create-repository --region sa-east-1 --repository-name ${PROJECT_NAME} >& /dev/null || echo 'Image repository already exists on aws (probably)'
-          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 
+          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
           
           docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:${{inputs.target_platform}}-latest
           docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG
