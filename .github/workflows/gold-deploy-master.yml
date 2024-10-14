@@ -26,7 +26,7 @@ jobs:
   building:
     name: Building project
     runs-on:
-        labels: ${{github.event.inputs.runners_labels}}-runner
+        labels: ${{github.event.inputs.target_platform}}-runner
 
     env:
       CI: true
