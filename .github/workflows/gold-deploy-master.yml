@@ -23,26 +23,15 @@ on:
         required: true
 
 jobs:
-  preparing:
-    name: Validate variables
-    runs-on: ubuntu-latest
-    steps:
-      - name: Validate variables
-        run: |
-          echo "platform: ${{github.event.inputs.target_platform}}"
-          echo "servers: ${{github.event.inputs.servers}}"
-          echo "service_port: ${{github.event.inputs.service_port}}"
-          echo "ecr_name: ${{github.event.inputs.ecr_name}}"
-
   building:
     name: Building project
     runs-on:
-        labels: ${{github.event.inputs.target_platform}}-runner
+        labels: ${{inputs.target_platform}}-runner
 
     env:
       CI: true
       NPM_FINANZERO_SECRET: ${{secrets.NPM_FINANZERO_SECRET}}
-      PORT: ${{github.event.inputs.service_port}}
+      PORT: ${{inputs.service_port}}
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
       image_tag: ${{ steps.building.outputs.image_tag }}
@@ -70,41 +59,41 @@ jobs:
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
           docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
-              -t $PROJECT_NAME:${{github.event.inputs.platform}}-$IMAGE_TAG \
-              -t $PROJECT_NAME:${{github.event.inputs.platform}}-latest \
-              -f ./Dockerfile_${{github.event.inputs.platform}} .
+              -t $PROJECT_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
+              -t $PROJECT_NAME:${{inputs.target_platform}}-latest \
+              -f ./Dockerfile_${{inputs.target_platform}} .
               
           aws ecr create-repository --region sa-east-1 --repository-name ${PROJECT_NAME} >& /dev/null || echo 'Image repository already exists on aws (probably)'
           aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 
           
-          docker image tag $PROJECT_NAME:${{github.event.inputs.platform}}-latest $IMAGE_NAME:${{github.event.inputs.platform}}-latest
-          docker image tag $PROJECT_NAME:${{github.event.inputs.platform}}-latest $IMAGE_NAME:${{github.event.inputs.platform}}-$IMAGE_TAG
-          docker image push $IMAGE_NAME:${{github.event.inputs.platform}}-latest
-          docker image push $IMAGE_NAME:${{github.event.inputs.platform}}-$IMAGE_TAG
+          docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:${{inputs.target_platform}}-latest
+          docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG
+          docker image push $IMAGE_NAME:${{inputs.target_platform}}-latest
+          docker image push $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG
           
           echo "################# Uploaded docker image to AWS ##################"
-          echo "Pushed image $IMAGE_NAME:${{github.event.inputs.platform}}-latest"
-          echo "Pushed image $IMAGE_NAME:${{github.event.inputs.platform}}-$IMAGE_TAG"
+          echo "Pushed image $IMAGE_NAME:${{inputs.target_platform}}-latest"
+          echo "Pushed image $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG"
           
           if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
-            docker image tag $PROJECT_NAME:${{github.event.inputs.platform}}-latest $IMAGE_NAME:pre-build
+            docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:pre-build
             docker image push $IMAGE_NAME:pre-build
             echo "Pushed image $IMAGE_NAME:pre-build"
           fi
 
   deploying:
     if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
-    name: Deploying ${{github.event.inputs.platform}} project
+    name: Deploying ${{inputs.target_platform}} project
     runs-on:
-      labels: ${{github.event.inputs.platform}}-runner
+      labels: ${{inputs.target_platform}}-runner
 
     needs: building
     env:
       CI: true
-      HOSTS: ${{github.event.inputs.servers}}
+      HOSTS: ${{inputs.servers}}
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
-      PORT: ${{github.event.inputs.service_port}}
+      PORT: ${{inputs.service_port}}
     
     outputs:
       port: ${{steps.deploying.outputs.port}}
@@ -132,13 +121,13 @@ jobs:
 
           for HOST in $HOSTS; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
-              aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{github.event.inputs.ecr_name}}
-              docker pull ${{github.event.inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{github.event.inputs.platform}}-${{needs.building.outputs.image_tag}}
+              aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
+              docker pull ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
 
               docker container stop ${{needs.building.outputs.project_name}}-prod || echo "No container to stop"
               docker container rm ${{needs.building.outputs.project_name}}-prod || echo "No container to remove"
               aws logs create-log-group --log-group-name ${{needs.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
-              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{needs.building.outputs.project_name}}-syslog-prod -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-prod ${{github.event.inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{github.event.inputs.platform}}-${{needs.building.outputs.image_tag}}
+              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{needs.building.outputs.project_name}}-syslog-prod -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-prod ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
               echo 'Project published successfully on $HOST'
             '
           done
