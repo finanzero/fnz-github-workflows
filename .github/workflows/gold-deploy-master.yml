@@ -12,6 +12,9 @@ on:
       target_platform:    # arm or x86
         required: true
         type: string
+      ecr_name:
+        required: true
+        type: string
 
     secrets:
       AWS_ACCESS_KEY_ID:
@@ -61,7 +64,7 @@ jobs:
               -f ./Dockerfile_${{github.event.inputs.platform}} .
               
           aws ecr create-repository --region sa-east-1 --repository-name ${PROJECT_NAME} >& /dev/null || echo 'Image repository already exists on aws (probably)'
-          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 960529452309.dkr.ecr.sa-east-1.amazonaws.com
+          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 
           
           docker image tag $PROJECT_NAME:${{github.event.inputs.platform}}-latest $IMAGE_NAME:${{github.event.inputs.platform}}-latest
           docker image tag $PROJECT_NAME:${{github.event.inputs.platform}}-latest $IMAGE_NAME:${{github.event.inputs.platform}}-$IMAGE_TAG
@@ -106,7 +109,7 @@ jobs:
       - name: Deploy on Production Server
         id: deploying
         run: |
-          export IMAGE_NAME="960529452309.dkr.ecr.sa-east-1.amazonaws.com/$PROJECT_NAME"
+          export IMAGE_NAME="${{github}}/$PROJECT_NAME"
           
           echo $HOSTS
           echo $PROJECT_NAME
@@ -118,13 +121,13 @@ jobs:
 
           for HOST in $HOSTS; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
-              aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 960529452309.dkr.ecr.sa-east-1.amazonaws.com
-              docker pull 960529452309.dkr.ecr.sa-east-1.amazonaws.com/${{needs.building.outputs.project_name}}:${{github.event.inputs.platform}}-${{needs.building.outputs.image_tag}}
+              aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{github.event.inputs.ecr_name}}
+              docker pull ${{github.event.inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{github.event.inputs.platform}}-${{needs.building.outputs.image_tag}}
 
               docker container stop ${{needs.building.outputs.project_name}}-prod || echo "No container to stop"
               docker container rm ${{needs.building.outputs.project_name}}-prod || echo "No container to remove"
               aws logs create-log-group --log-group-name ${{needs.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
-              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{needs.building.outputs.project_name}}-syslog-prod -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-prod 960529452309.dkr.ecr.sa-east-1.amazonaws.com/${{needs.building.outputs.project_name}}:${{github.event.inputs.platform}}-${{needs.building.outputs.image_tag}}
+              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{needs.building.outputs.project_name}}-syslog-prod -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-prod ${{github.event.inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{github.event.inputs.platform}}-${{needs.building.outputs.image_tag}}
               echo 'Project published successfully on $HOST'
             '
           done
