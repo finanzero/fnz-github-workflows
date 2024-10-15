@@ -124,11 +124,9 @@ jobs:
 
           for HOST in $HOSTS; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
+              set -e
               aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
               docker pull ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
-              if [ $0 <> 0 ]; then
-                exit 1
-              fi
               docker container stop ${{needs.building.outputs.project_name}}-prod || echo "No container to stop"
               docker container rm ${{needs.building.outputs.project_name}}-prod || echo "No container to remove"
               aws logs create-log-group --log-group-name ${{needs.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
