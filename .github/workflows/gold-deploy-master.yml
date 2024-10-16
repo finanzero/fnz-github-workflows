@@ -55,8 +55,7 @@ jobs:
       - name: Describe commit ID
         id: describe-commit-id
         run: |
-          export GIT_COMMIT=$(git rev-parse HEAD)
-          ::set-output name=commit_id::$(git rev-parse HEAD)
+          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
       - name: Building and Uploading Docker Image to ECR
         id: building
@@ -69,12 +68,11 @@ jobs:
           echo "port=$PORT" >> "$GITHUB_OUTPUT"
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
           echo "current version=${{steps.package-version.outputs.current-version}}"
-          echo "current commit=$GIT_COMMIT"
-          echo "current commit2=${{steps.describe-commit-id.outputs.commit_id}}"
+          echo "current commit=$COMMIT_ID"
 
           docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
               --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
-              --build-arg COMMIT_ID=$GIT_COMMIT \
+              --build-arg COMMIT_ID=$COMMIT_ID \
               -t $PROJECT_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
               -t $PROJECT_NAME:${{inputs.target_platform}}-latest \
               -f ./Dockerfile_${{inputs.target_platform}} .
