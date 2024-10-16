@@ -42,13 +42,19 @@ jobs:
       port: ${{steps.building.outputs.port}}
 
     steps:
-      
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: sa-east-1
+
+      - name: Describe commit ID
+        run: |
+          export COMMIT_ID=$(git rev-parse HEAD)
 
       - name: Building and Uploading Docker Image to ECR
         id: building
@@ -62,6 +68,8 @@ jobs:
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
           docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
+              --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
+              --build-arg COMMIT_ID=$COMMIT_ID \
               -t $PROJECT_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
               -t $PROJECT_NAME:${{inputs.target_platform}}-latest \
               -f ./Dockerfile_${{inputs.target_platform}} .
