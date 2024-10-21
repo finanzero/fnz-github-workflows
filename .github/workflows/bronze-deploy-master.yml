@@ -63,11 +63,12 @@ jobs:
             echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
   
             docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
+                --build-arg ENVIRONMENT="${{inputs.environment}}" \
                 -t $PROJECT_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
                 -t $PROJECT_NAME:${{inputs.target_platform}}-latest \
                 -t $IMAGE_NAME:${{inputs.target_platform}}-latest \
                 -t $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
-                -f ./Dockerfile_${{inputs.environment}}  .
+                -f ./Dockerfile_ci .
                 
             aws ecr create-repository --region sa-east-1 --repository-name ${PROJECT_NAME} >& /dev/null || echo 'Image repository already exists on aws (probably)'
             aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
