@@ -100,7 +100,7 @@ jobs:
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
               set -e
               aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
-              docker pull $IMAGE_FULL_NAME
+              docker pull "$IMAGE_FULL_NAME"
               docker container stop ${{steps.building.outputs.project_name}} || echo "No container to stop"
               docker container rm ${{steps.building.outputs.project_name}} || echo "No container to remove"
               aws logs create-log-group --log-group-name ${{steps.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
