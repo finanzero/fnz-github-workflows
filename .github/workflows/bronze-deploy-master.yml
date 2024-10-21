@@ -64,6 +64,7 @@ jobs:
   
             docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
                 --build-arg ENVIRONMENT="${{inputs.environment}}" \
+                --build-arg PORT=${{inputs.service_port}} \
                 -t $PROJECT_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
                 -t $PROJECT_NAME:${{inputs.target_platform}}-latest \
                 -t $IMAGE_NAME:${{inputs.target_platform}}-latest \
