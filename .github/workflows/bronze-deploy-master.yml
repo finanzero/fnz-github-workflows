@@ -94,6 +94,7 @@ jobs:
         run: |
           echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
           chmod 400 ./aws-key.pem
+          echo "Image fullname: $IMAGE_FULL_NAME"
           
           for HOST in ${{inputs.servers}}; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
