@@ -18,9 +18,6 @@ on:
           runner_vm:
             required: true
             type: string
-          ssh_private_key:
-            required: true
-            type: string
           environment:      # beta or prod
             required: true
             type: string
@@ -103,7 +100,7 @@ jobs:
         # env:
         #     CI: true
         run: |
-          echo "${{ inputs.ssh_private_key }}" > ./aws-key.pem
+          echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
           chmod 400 ./aws-key.pem
           
           for HOST in ${{inputs.servers}}; do
