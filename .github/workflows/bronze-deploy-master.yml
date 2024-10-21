@@ -108,7 +108,7 @@ jobs:
               aws logs create-log-group --log-group-name ${{steps.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
               docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 \
                 --log-opt awslogs-group=${{steps.building.outputs.project_name}}-syslog-${{inputs.environment}} \
-                -p ${{ steps.building.outputs.port }}:80 \
+                -p ${{ inputs.service_port }}: ${{ inputs.service_port }} \
                 --restart always \
                 --name ${{steps.building.outputs.project_name}} ${{steps.building.outputs.image_full_name}}
               echo 'Project published successfully on $HOST'
