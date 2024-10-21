@@ -33,9 +33,6 @@ jobs:
     name: Deploy
     runs-on:
         labels: ${{inputs.runner_vm}}
-    env:
-      CI: true
-      FINANZEROCREDENTIALS: /root/.ssh/id_rsa
 
     steps:
       - uses: actions/checkout@v4
