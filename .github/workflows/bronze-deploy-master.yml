@@ -100,11 +100,15 @@ jobs:
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
               set -e
               aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
-              docker pull ${{inputs.ecr_name}}/$IMAGE_FULL_NAME
+              docker pull $IMAGE_FULL_NAME
               docker container stop ${{steps.building.outputs.project_name}} || echo "No container to stop"
               docker container rm ${{steps.building.outputs.project_name}} || echo "No container to remove"
               aws logs create-log-group --log-group-name ${{steps.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
-              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{steps.building.outputs.project_name}}-syslog-${{inputs.environment}} -p ${{ steps.building.outputs.port }}:80 --restart always --name ${{steps.building.outputs.project_name}} ${{inputs.ecr_name}}/${{steps.building.outputs.project_name}}:${{inputs.target_platform}}-${{steps.building.outputs.image_tag}}
+              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 \
+                --log-opt awslogs-group=${{steps.building.outputs.project_name}}-syslog-${{inputs.environment}} \
+                -p ${{ steps.building.outputs.port }}:80 \
+                --restart always \
+                --name ${{steps.building.outputs.project_name}} $IMAGE_FULL_NAME
               echo 'Project published successfully on $HOST'
             '
           done
