@@ -74,7 +74,7 @@ jobs:
             
             docker image push $IMAGE_NAME:${{inputs.target_platform}}-latest
             docker image push $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG
-            echo "IMAGE_FULL_NAME=$IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG" >> $GITHUB_ENV
+            echo "image_full_name=$IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG" >> $"$GITHUB_OUTPUT"
             
             echo "################# Uploaded docker image to AWS ##################"
             echo "Pushed image $IMAGE_NAME:${{inputs.target_platform}}-latest"
@@ -94,13 +94,13 @@ jobs:
         run: |
           echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
           chmod 400 ./aws-key.pem
-          echo "Image fullname: $IMAGE_FULL_NAME"
+          echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
           
           for HOST in ${{inputs.servers}}; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
               set -e
               aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
-              docker pull "$IMAGE_FULL_NAME"
+              docker pull ${{steps.building.outputs.image_full_name}}
               docker container stop ${{steps.building.outputs.project_name}} || echo "No container to stop"
               docker container rm ${{steps.building.outputs.project_name}} || echo "No container to remove"
               aws logs create-log-group --log-group-name ${{steps.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
@@ -108,7 +108,7 @@ jobs:
                 --log-opt awslogs-group=${{steps.building.outputs.project_name}}-syslog-${{inputs.environment}} \
                 -p ${{ steps.building.outputs.port }}:80 \
                 --restart always \
-                --name ${{steps.building.outputs.project_name}} $IMAGE_FULL_NAME
+                --name ${{steps.building.outputs.project_name}} ${{steps.building.outputs.image_full_name}}
               echo 'Project published successfully on $HOST'
             '
           done
