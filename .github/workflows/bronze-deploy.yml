@@ -92,7 +92,9 @@ jobs:
         if: inputs.environment == 'beta'
         run: |
           echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
-          
+          echo "${{ secrets.BETA_SSH_PRIVATE_KEY }}" > ./aws-key.pem
+          chmod 400 ./aws-key.pem
+
           for HOST in ${{inputs.servers}}; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
               set -e
@@ -116,7 +118,9 @@ jobs:
         #     CI: true
         run: |
           echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
-          
+          echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
+          chmod 400 ./aws-key.pem
+           
           for HOST in ${{inputs.servers}}; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
               set -e
