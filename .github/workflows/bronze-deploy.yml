@@ -92,6 +92,7 @@ jobs:
         run: |
           echo "${{ secrets.BETA_SSH_PRIVATE_KEY }}" > ./aws-key.pem
           chmod 400 ./aws-key.pem
+          echo "ls: $(ls -la)"
 
       - name: Set ssh key for prod
         if: inputs.environment == 'prod'
@@ -106,6 +107,7 @@ jobs:
         #     CI: true
         run: |
           echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
+          echo "ls: $(ls -la)"
           
           for HOST in ${{inputs.servers}}; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
