@@ -87,27 +87,35 @@ jobs:
               docker image push $IMAGE_NAME:pre-build
               echo "Pushed image $IMAGE_NAME:pre-build"
             fi
-      - name: Set ssh key for beta
+
+      - name: Deploy Beta
         if: inputs.environment == 'beta'
         run: |
-          echo "${{ secrets.BETA_SSH_PRIVATE_KEY }}" > ./aws-key.pem
-          chmod 400 ./aws-key.pem
-          echo "ls: $(ls -la)"
-
-      - name: Set ssh key for prod
-        if: inputs.environment == 'prod'
-        run: |
-          echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
-          chmod 400 ./aws-key.pem
+          echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
+          
+          for HOST in ${{inputs.servers}}; do
+            ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
+              set -e
+              aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
+              docker pull ${{steps.building.outputs.image_full_name}}
+              docker container stop ${{steps.building.outputs.project_name}} || echo "No container to stop"
+              docker container rm ${{steps.building.outputs.project_name}} || echo "No container to remove"
+              docker run -d \
+                -p ${{ inputs.service_port }}:${{ inputs.service_port }} \
+                --restart always \
+                --name ${{steps.building.outputs.project_name}} ${{steps.building.outputs.image_full_name}}
+              echo 'Project published successfully on $HOST'
+            '
+          done
    
-      - name: Deploy ${{inputs.environment}}
+   
+      - name: Deploy Prod
         id: deploy
-        if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
+        if: ${{ inputs.environment == 'prod' && !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
         # env:
         #     CI: true
         run: |
           echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
-          echo "ls: $(ls -la)"
           
           for HOST in ${{inputs.servers}}; do
             ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
