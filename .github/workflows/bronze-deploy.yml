@@ -90,7 +90,7 @@ jobs:
       - name: Set ssh key for beta
         if: inputs.environment == 'beta'
         run: |
-          echo "${{secrets.BETA_SSH_PRIVATE_KEY}} " > ./aws-key.pem
+          echo "${{ secrets.BETA_SSH_PRIVATE_KEY }}" > ./aws-key.pem
           chmod 400 ./aws-key.pem
 
       - name: Set ssh key for prod
