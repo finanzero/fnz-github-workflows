@@ -103,7 +103,7 @@ jobs:
               docker container stop ${{steps.building.outputs.project_name}} || echo "No container to stop"
               docker container rm ${{steps.building.outputs.project_name}} || echo "No container to remove"
               docker run -d \
-                ---net=host  \
+                ---network host  \
                 --restart always \
                 --name ${{steps.building.outputs.project_name}} ${{steps.building.outputs.image_full_name}}
               echo 'Project published successfully on $HOST'
