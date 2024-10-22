@@ -87,15 +87,24 @@ jobs:
               docker image push $IMAGE_NAME:pre-build
               echo "Pushed image $IMAGE_NAME:pre-build"
             fi
+      - name: Set ssh key for beta
+        if: inputs.environment == 'beta'
+        run: |
+          echo "${{secrets.BETA_SSH_PRIVATE_KEY}} " > ./aws-key.pem
+          chmod 400 ./aws-key.pem
 
+      - name: Set ssh key for prod
+        if: inputs.environment == 'prod'
+        run: |
+          echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
+          chmod 400 ./aws-key.pem
+   
       - name: Deploy ${{inputs.environment}}
         id: deploy
         if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
         # env:
         #     CI: true
         run: |
-          echo "${{ secrets.BO_PRIVATE_KEY }}" > ./aws-key.pem
-          chmod 400 ./aws-key.pem
           echo "Image fullname: ${{steps.building.outputs.image_full_name}}"
           
           for HOST in ${{inputs.servers}}; do
