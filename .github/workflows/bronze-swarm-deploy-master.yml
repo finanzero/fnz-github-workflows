@@ -102,11 +102,11 @@ jobs:
                 echo "Instalando o servico com o docker-compose"
 
                 echo "Validando a versão do package ..."
-                VERSAO=`grep -m 1 "amazonaws.com/mis:" tools/docker-compose-prod.yml | cut -d':' -f3`
+                VERSAO=`grep -m 1 "amazonaws.com/[^:]*:" tools/docker-compose-prod.yml | cut -d':' -f3`
                 if grep -q $VERSAO package.json; then 
-                    echo "Versão do package.json compatível com o arquivo docker-compose-prod.yxml"
+                    echo "Versão do package.json compatível com o arquivo docker-compose-prod.yml"
                 else
-                    echo "Atualize a versão do arquivo docker-compose-prod.yxml"
+                    echo "Atualize a versão do arquivo docker-compose-prod.yml"
                     exit 1
                 fi
                 docker stack deploy -c tools/docker-compose-prod.yml ${{steps.building.outputs.project_name}} --with-registry-auth --prune
