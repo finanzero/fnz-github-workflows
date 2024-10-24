@@ -94,7 +94,7 @@ jobs:
 
             VAZIO=false
             COMPOSE=false
-            SERVICOS=$(docker service ls -f label=com.docker.stack.namespace= ${{steps.building.outputs.project_name}} --format "{{.Name}}")
+            SERVICOS=$(docker service ls -f label=com.docker.stack.namespace=${{steps.building.outputs.project_name}} --format "{{.Name}}")
             if [ "$SERVICOS" == "" ]; then
                 COMPOSE=true
             fi
@@ -109,7 +109,7 @@ jobs:
                     echo "Atualize a versão do arquivo docker-compose-prod.yxml"
                     exit 1
                 fi
-                docker stack deploy -c tools/docker-compose-prod.yml mis --with-registry-auth --prune
+                docker stack deploy -c tools/docker-compose-prod.yml ${{steps.building.outputs.project_name}} --with-registry-auth --prune
             fi
             if [ $COMPOSE == false ]; then
                 echo Atualizando as imagens dos serviços
