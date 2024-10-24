@@ -88,7 +88,7 @@ jobs:
 
             export DOCKER_HOST="ssh://ubuntu@${{inputs.server_swarm}}"
 
-            # aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 960529452309.dkr.ecr.sa-east-1.amazonaws.com
+            aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin 960529452309.dkr.ecr.sa-east-1.amazonaws.com
           
             docker pull ${{steps.building.outputs.image_full_name}}
 
