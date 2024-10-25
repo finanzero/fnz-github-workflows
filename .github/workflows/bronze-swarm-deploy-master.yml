@@ -116,7 +116,7 @@ jobs:
                 echo Atualizando as imagens dos serviços
                 for SERV in $SERVICOS; do
                     echo "Atualizando serviço $SERV"
-                    docker service update --image ${{steps.building.outputs.image_full_name}} $SERV
+                    docker service update --image ${{steps.building.outputs.image_full_name}} $SERV --with-registry-auth
                 done
             fi
 
