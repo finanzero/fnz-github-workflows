@@ -3,26 +3,34 @@ name: Integration Gold CI - Production
 on:      
   workflow_call:
     inputs:
-      service_port:
-        required: true
-        type: string
-      servers:
-        required: true
-        type: string
       target_platform:    # arm or x86
-        required: true
-        type: string
-      ecr_name:
         required: true
         type: string
       runner_vm:
         required: true
         type: string
+      # GCP Variables:
+      gke_cluster:
+        required: true
+        type: string
+      gke_zone:
+        required: false
+        type: string
+        default: "southamerica-east1-b"
+      artifact_registry_region:
+        required: false
+        type: string
+        default: "southamerica-east1"
+      artifact_registry_repo:
+        required: false
+        type: string
+        default: fnzr-repo
+
 
     secrets:
-      AWS_ACCESS_KEY_ID:
+      GCP_PROJECT_ID:
         required: true
-      AWS_SECRET_ACCESS_KEY:
+      GCP_SERVICE_ACCOUNT_KEY:
         required: true
 
 jobs:
@@ -34,20 +42,30 @@ jobs:
     env:
       CI: true
       NPM_FINANZERO_SECRET: ${{secrets.NPM_FINANZERO_SECRET}}
-      PORT: ${{inputs.service_port}}
+      GCP_PROJECT_ID: ${{secrets.GCP_PROJECT_ID}}
+      ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
+      ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
+
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
       image_tag: ${{ steps.building.outputs.image_tag }}
-      image_name: ${{ steps.building.outputs.image_name }}
-      port: ${{steps.building.outputs.port}}
+      image_name: ${{ steps.building.outputs.image_name_with_platform }}
 
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: sa-east-1
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Setup gcloud CLI
+        id: setup-gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
       - name: get-npm-version
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
@@ -57,15 +75,31 @@ jobs:
         run: |
           echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
-      - name: Building and Uploading Docker Image to ECR
+      - name: Configure Docker Auth to Artifact Registry (GCP)
+        id: docker-host-auth
+        run: |
+          gcloud auth print-access-token | docker login -u oauth2accesstoken \
+            --password-stdin https://${ARTIFACT_REGISTRY_HOST}
+
+      - name: Create Artifact Registry (If not exists)
+        id: create-artifact-registry
+        run: |
+          gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
+
+      - name: Building and Uploading Docker Image to GCP
         id: building
         run: |          
           export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
+          
           export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
+          export IMAGE_NAME="${ARTIFACT_REGISTRY_HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${PROJECT_NAME}"
+          export IMAGE_NAME_WITH_PLATFORM="${IMAGE_NAME}:${{inputs.target_platform}}"
+          
           export NPM_FINANZERO_SECRET=${NPM_FINANZERO_SECRET:-"$(cat ~/.npmrc)"}
-          export IMAGE_NAME=`aws ecr describe-repositories --repository-names $PROJECT_NAME --output text --region sa-east-1 --query 'repositories[*].repositoryUri'`
+          
           echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
-          echo "port=$PORT" >> "$GITHUB_OUTPUT"
+          echo "image_name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "image_name_with_platform=$IMAGE_NAME_WITH_PLATFORM" >> "$GITHUB_OUTPUT"
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
           echo "current version=${{steps.package-version.outputs.current-version}}"
           echo "current commit=$COMMIT_ID"
@@ -73,26 +107,21 @@ jobs:
           docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
               --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
               --build-arg COMMIT_ID=$COMMIT_ID \
-              -t $PROJECT_NAME:${{inputs.target_platform}}-$IMAGE_TAG \
-              -t $PROJECT_NAME:${{inputs.target_platform}}-latest \
+              -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
+              -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
+              -t ${IMAGE_NAME}:pre-build \
               -f ./Dockerfile_${{inputs.target_platform}} .
-              
-          aws ecr create-repository --region sa-east-1 --repository-name ${PROJECT_NAME} >& /dev/null || echo 'Image repository already exists on aws (probably)'
-          aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
           
-          docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:${{inputs.target_platform}}-latest
-          docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG
-          docker image push $IMAGE_NAME:${{inputs.target_platform}}-latest
-          docker image push $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG
+          docker image push ${IMAGE_NAME_WITH_PLATFORM}-latest
+          docker image push ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG
           
-          echo "################# Uploaded docker image to AWS ##################"
-          echo "Pushed image $IMAGE_NAME:${{inputs.target_platform}}-latest"
-          echo "Pushed image $IMAGE_NAME:${{inputs.target_platform}}-$IMAGE_TAG"
+          echo "################# Uploaded docker image to Docker Repository ##################"
+          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-latest"
+          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG"
           
           if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
-            docker image tag $PROJECT_NAME:${{inputs.target_platform}}-latest $IMAGE_NAME:pre-build
-            docker image push $IMAGE_NAME:pre-build
-            echo "Pushed image $IMAGE_NAME:pre-build"
+            docker image push ${IMAGE_NAME}:pre-build
+            echo "Pushed image ${IMAGE_NAME}:pre-build"
           fi
 
   deploying:
@@ -104,44 +133,41 @@ jobs:
     needs: building
     env:
       CI: true
-      HOSTS: ${{inputs.servers}}
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
+      IMAGE_NAME: ${{needs.building.outputs.image_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
-      PORT: ${{inputs.service_port}}
-    
-    outputs:
-      port: ${{steps.deploying.outputs.port}}
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: sa-east-1
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
-      - name: Deploy on Production Server
-        id: deploying
+      - name: Set up GKE credentials
+        id: get-gke-credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_ZONE }}
+
+      # Install helm
+      - name: Install Helm
+        id: helm-install
         run: |
-          export IMAGE_NAME="${{github}}/$PROJECT_NAME"
-          
-          echo $HOSTS
-          echo $PROJECT_NAME
-          echo $IMAGE_TAG
-          echo $IMAGE_NAME
-          echo "port=$PORT" >> "$GITHUB_OUTPUT"
-          echo "${{ secrets.GOLD_SERVERS }}" > ./aws-key.pem
-          chmod 400 ./aws-key.pem
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-          for HOST in $HOSTS; do
-            ssh -o StrictHostKeyChecking=no -i ./aws-key.pem ubuntu@${HOST} '
-              set -e
-              aws ecr get-login-password --region sa-east-1 | docker login --username AWS --password-stdin ${{inputs.ecr_name}}
-              docker pull ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
-              docker container stop ${{needs.building.outputs.project_name}}-prod || echo "No container to stop"
-              docker container rm ${{needs.building.outputs.project_name}}-prod || echo "No container to remove"
-              aws logs create-log-group --log-group-name ${{needs.building.outputs.project_name}}-syslog-prod || echo "Log group already created"
-              docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{needs.building.outputs.project_name}}-syslog-prod -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-prod ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
-              echo 'Project published successfully on $HOST'
-            '
-          done
+      - name: Deploy the Docker image to the Kubernetes cluster
+        id: k8s-deploy
+        run: |
+          helm upgrade --install \
+            ${PROJECT_NAME} chart/ \
+            --namespace ${PROJECT_NAME} --create-namespace \
+            --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
+            --wait
+
+          kubectl get services -n ${PROJECT_NAME} -o wide
+
+          echo 'Project published successfully'
