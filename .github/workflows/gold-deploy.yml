@@ -10,6 +10,9 @@ on:
         required: true
         type: string
       # GCP Variables:
+      gcp_project_id:
+        required: true
+        type: string
       gke_cluster:
         required: true
         type: string
@@ -28,8 +31,6 @@ on:
 
 
     secrets:
-      GCP_PROJECT_ID:
-        required: true
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
 
@@ -42,7 +43,7 @@ jobs:
     env:
       CI: true
       NPM_FINANZERO_SECRET: ${{secrets.NPM_FINANZERO_SECRET}}
-      GCP_PROJECT_ID: ${{secrets.GCP_PROJECT_ID}}
+      GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
       ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
       ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
 
@@ -64,7 +65,7 @@ jobs:
         id: setup-gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: get-npm-version
         id: package-version
