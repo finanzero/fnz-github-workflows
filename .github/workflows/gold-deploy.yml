@@ -151,8 +151,8 @@ jobs:
         id: get-gke-credentials
         uses: google-github-actions/get-gke-credentials@v2
         with:
-          cluster_name: ${{ secrets.GKE_CLUSTER }}
-          location: ${{ secrets.GKE_ZONE }}
+          cluster_name: ${{ inputs.gke_cluster }}
+          location: ${{ inputs.gke_zone }}
 
       # Install helm
       - name: Install Helm
