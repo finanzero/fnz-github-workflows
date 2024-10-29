@@ -163,12 +163,14 @@ jobs:
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
         run: |
-          helm upgrade --install \
+          export K8S_NAMESPACE=$(echo "${PROJECT_NAME}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]')
+
+          helm upgrade -i \
             ${PROJECT_NAME} chart/ \
-            --namespace ${PROJECT_NAME} --create-namespace \
+            -n ${K8S_NAMESPACE} --create-namespace \
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
             --wait
 
-          kubectl get services -n ${PROJECT_NAME} -o wide
+          kubectl get services -n ${K8S_NAMESPACE} -o wide
 
           echo 'Project published successfully'
