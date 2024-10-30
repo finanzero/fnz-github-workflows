@@ -115,7 +115,7 @@ jobs:
             if [ $COMPOSE == false ]; then
                 echo Atualizando as imagens dos serviços
                 for SERV in $SERVICOS; do
-                    echo "Atualizando serviço $SERV"
+                    echo "Atualizando serviço $SERV com a imagem ${{steps.building.outputs.image_full_name}}"
                     docker service update --image ${{steps.building.outputs.image_full_name}} $SERV --with-registry-auth
                 done
             fi
