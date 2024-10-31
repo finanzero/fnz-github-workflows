@@ -28,6 +28,11 @@ on:
         required: false
         type: string
         default: fnzr-repo
+      values_path:
+        required: false
+        type: string
+        default: values.yaml
+
 
 
     secrets:
@@ -134,6 +139,7 @@ jobs:
     needs: building
     env:
       CI: true
+      VALUES_PATH: ${{inputs.values_path}}
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
       IMAGE_NAME: ${{needs.building.outputs.image_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
@@ -168,6 +174,7 @@ jobs:
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
             -n ${K8S_NAMESPACE} --create-namespace \
+            -f chart/${VALUES_PATH}
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
             --wait
 
