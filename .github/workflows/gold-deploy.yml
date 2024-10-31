@@ -174,7 +174,7 @@ jobs:
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
             -n ${K8S_NAMESPACE} --create-namespace \
-            -f chart/${VALUES_PATH}
+            -f chart/${VALUES_PATH} \
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
             --wait
 
