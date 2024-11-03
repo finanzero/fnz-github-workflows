@@ -20,6 +20,10 @@ on:
         required: false
         type: string
         default: "southamerica-east1-b"
+      k8s_namespace:
+        required: false
+        type: string
+        default: "finanzero"
       artifact_registry_region:
         required: false
         type: string
@@ -140,6 +144,7 @@ jobs:
     env:
       CI: true
       VALUES_PATH: ${{inputs.values_path}}
+      K8S_NAMESPACE: ${{inputs.k8s_namespace}}
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
       IMAGE_NAME: ${{needs.building.outputs.image_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
@@ -169,8 +174,6 @@ jobs:
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
         run: |
-          export K8S_NAMESPACE=$(echo "${PROJECT_NAME}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]')
-
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
             -n ${K8S_NAMESPACE} --create-namespace \
