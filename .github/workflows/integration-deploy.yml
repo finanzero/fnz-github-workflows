@@ -1,0 +1,172 @@
+name: Integration Global CI - Production
+
+on:      
+  workflow_call:
+    inputs:
+      reason:
+        required: true
+        type: string
+      runner_vm:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+      # GCP Variables:
+      gcp_project_id:
+        required: true
+        type: string
+      gke_cluster:
+        required: true
+        type: string
+      gke_zone:
+        required: false
+        type: string
+        default: "southamerica-east1-b"
+      k8s_namespace:
+        required: false
+        type: string
+        default: "finanzero"
+      artifact_registry_region:
+        required: false
+        type: string
+        default: "southamerica-east1"
+      artifact_registry_repo:
+        required: false
+        type: string
+        default: fnzr-repo
+      values_path:
+        required: false
+        type: string
+        default: values.yaml
+    secrets:
+      GCP_SERVICE_ACCOUNT_KEY:
+        required: true
+      CR_INTEGRATIONS:
+        required: true
+      INTEGRATION_CORE_KEY:
+        required: true
+
+jobs:
+  building:
+    if: github.event.pull_request.merged == true || github.event.inputs.reason != ''
+    name: Building project
+    runs-on:
+      labels: ${{inputs.runner_vm}}
+
+    env:
+      CI: true
+      GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
+      ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
+      ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
+
+    outputs:
+      project_name: ${{ steps.building.outputs.project_name }}
+      image_tag: ${{ steps.building.outputs.image_tag }}
+      image_name: ${{ steps.building.outputs.image_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Setup gcloud CLI
+        id: setup-gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure Docker Auth to Artifact Registry (GCP)
+        id: docker-host-auth
+        run: |
+          gcloud auth print-access-token | docker login -u oauth2accesstoken \
+            --password-stdin https://${ARTIFACT_REGISTRY_HOST}
+  
+      - name: Create Artifact Registry (If not exists)
+        id: create-artifact-registry
+        run: |
+          gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
+  
+      - name: Building and Uploading Docker Image to GCP
+        id: building
+        run: |
+          export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
+
+          export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
+          export IMAGE_NAME="${ARTIFACT_REGISTRY_HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${{secrets.CR_INTEGRATIONS}}/${PROJECT_NAME}"
+
+          echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "image_name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+          docker image build \
+            --build-arg INTEGRATION_CORE_KEY="${{secrets.INTEGRATION_CORE_KEY}}" \
+            -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
+            -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
+            -t ${IMAGE_NAME}:pre-build \
+            -f Dockerfile_ci .
+              
+          docker image push ${IMAGE_NAME_WITH_PLATFORM}-latest
+          docker image push ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG
+          
+          echo "################# Uploaded docker image to Docker Repository ##################"
+          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-latest"
+          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG"
+          
+          if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
+            docker image push ${IMAGE_NAME}:pre-build
+            echo "Pushed image ${IMAGE_NAME}:pre-build"
+          fi
+
+  deploying:
+    if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
+    name: Deploying project
+    runs-on:
+      labels: ${{inputs.runner_vm}}
+    needs: building
+
+    env:
+      CI: true
+      VALUES_PATH: ${{inputs.values_path}}
+      K8S_NAMESPACE: ${{inputs.k8s_namespace}}
+      PROJECT_NAME: ${{needs.building.outputs.project_name}}
+      IMAGE_NAME: ${{needs.building.outputs.image_name}}
+      IMAGE_TAG: ${{needs.building.outputs.image_tag}}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up GKE credentials
+        id: get-gke-credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ inputs.gke_cluster }}
+          location: ${{ inputs.gke_zone }}
+
+      # Install helm
+      - name: Install Helm
+        id: helm-install
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+      - name: Deploy the Docker image to the Kubernetes cluster
+        id: k8s-deploy
+        run: |
+          helm upgrade -i \
+            ${PROJECT_NAME} chart/ \
+            -n ${K8S_NAMESPACE} --create-namespace \
+            -f chart/${VALUES_PATH} \
+            --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
+            --wait
+
+          kubectl get services -n ${K8S_NAMESPACE} -o wide
+
+          echo 'Project published successfully'
