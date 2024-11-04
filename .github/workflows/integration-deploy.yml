@@ -40,8 +40,6 @@ on:
     secrets:
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
-      CR_INTEGRATIONS:
-        required: true
       INTEGRATION_CORE_KEY:
         required: true
 
@@ -95,7 +93,7 @@ jobs:
           export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
 
           export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
-          export IMAGE_NAME="${ARTIFACT_REGISTRY_HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${{secrets.CR_INTEGRATIONS}}/${PROJECT_NAME}"
+          export IMAGE_NAME="${ARTIFACT_REGISTRY_HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${PROJECT_NAME}"
 
           echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
           echo "image_name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
