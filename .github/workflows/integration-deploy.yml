@@ -103,17 +103,17 @@ jobs:
 
           docker image build \
             --build-arg INTEGRATION_CORE_KEY="${{secrets.INTEGRATION_CORE_KEY}}" \
-            -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
-            -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
+            -t ${IMAGE_NAME}-latest \
+            -t ${IMAGE_NAME}-$IMAGE_TAG \
             -t ${IMAGE_NAME}:pre-build \
             -f Dockerfile_ci .
               
-          docker image push ${IMAGE_NAME_WITH_PLATFORM}-latest
-          docker image push ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG
+          docker image push ${IMAGE_NAME}-latest
+          docker image push ${IMAGE_NAME}-$IMAGE_TAG
           
           echo "################# Uploaded docker image to Docker Repository ##################"
-          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-latest"
-          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG"
+          echo "Pushed image ${IMAGE_NAME}-latest"
+          echo "Pushed image ${IMAGE_NAME}-$IMAGE_TAG"
           
           if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
             docker image push ${IMAGE_NAME}:pre-build
