@@ -24,7 +24,6 @@ on:
       k8s_namespace:
         required: false
         type: string
-        default: "finanzero"
       artifact_registry_region:
         required: false
         type: string
@@ -158,6 +157,11 @@ jobs:
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
         run: |
+          export PROJECT_NAME_TO_K8S_NAMESPACE=$(echo "${PROJECT_NAME}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]')
+          export K8S_NAMESPACE=${K8S_NAMESPACE:-`"${PROJECT_NAME_TO_K8S_NAMESPACE}"`}
+
+          echo "k8s_namespace=$K8S_NAMESPACE" >> "$GITHUB_OUTPUT"
+
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
             -n ${K8S_NAMESPACE} --create-namespace \
