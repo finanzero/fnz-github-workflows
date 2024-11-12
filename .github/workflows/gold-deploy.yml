@@ -3,9 +3,12 @@ name: Integration Gold CI - Production
 on:      
   workflow_call:
     inputs:
-      target_platform:    # arm or x86
+      target_platform:    # arm, x86 or ci (without target platform)
         required: true
         type: string
+      docker_file_contains_target_platform_in_name:
+        type: boolean
+        default: true
       runner_vm:
         required: true
         type: string
@@ -119,7 +122,7 @@ jobs:
               -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
               -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
               -t ${IMAGE_NAME}:pre-build \
-              -f ./Dockerfile_${{inputs.target_platform}} .
+              -f ./Dockerfile_${{ inputs.docker_file_contains_target_platform_in_name && inputs.target_platform || 'ci' }} .
           
           docker image push ${IMAGE_NAME_WITH_PLATFORM}-latest
           docker image push ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG
