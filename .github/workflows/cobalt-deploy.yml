@@ -187,7 +187,7 @@ jobs:
             -n ${K8S_NAMESPACE} --create-namespace \
             -f chart/${VALUES_PATH} \
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
-            $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }} \"; fi)
+            $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=1h0m0s
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
