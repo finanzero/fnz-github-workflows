@@ -198,13 +198,6 @@ jobs:
           echo "K8S_SERVICE_ACCOUNT=${K8S_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
           echo "GCP_SERVICE_ACCOUNT=${GCP_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
 
-      - name: Bind Service Account from GKE and GCP IAM
-        id: bind-sa-gke-iam
-        run: |
-          gcloud iam service-accounts add-iam-policy-binding ${GCP_SERVICE_ACCOUNT} \
-            --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
-            --role="roles/iam.workloadIdentityUser"
-
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
         run: |
@@ -221,3 +214,10 @@ jobs:
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
           echo 'Project published successfully'
+
+      - name: Bind Service Account from GKE and GCP IAM
+        id: bind-sa-gke-iam
+        run: |
+          gcloud iam service-accounts add-iam-policy-binding ${GCP_SERVICE_ACCOUNT} \
+            --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
+            --role="roles/iam.workloadIdentityUser"
