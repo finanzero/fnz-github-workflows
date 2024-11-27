@@ -23,6 +23,9 @@ on:
         required: false
         type: string
         default: "southamerica-east1-b"
+      gke_service_account:
+        required: true
+        type: string
       k8s_namespace:
         required: false
         type: string
@@ -152,6 +155,7 @@ jobs:
     env:
       CI: true
       GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
+      GKE_SERVICE_ACCOUNT: ${{inputs.gke_service_account}}
       VALUES_PATH: ${{inputs.values_path}}
       K8S_NAMESPACE: ${{inputs.k8s_namespace}}
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
@@ -166,12 +170,6 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      - name: Setup gcloud CLI
-        id: setup-gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ env.GCP_PROJECT_ID }}
 
       - name: Set up GKE credentials
         id: get-gke-credentials
@@ -192,11 +190,16 @@ jobs:
           export PROJECT_NAME_TO_K8S_NAMESPACE=$(echo "${PROJECT_NAME}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]')
           export K8S_NAMESPACE=${K8S_NAMESPACE:-${PROJECT_NAME_TO_K8S_NAMESPACE}}
           export K8S_SERVICE_ACCOUNT="${K8S_NAMESPACE}-sa"
-          export GCP_SERVICE_ACCOUNT=$(gcloud config get-value account)
 
           echo "K8S_NAMESPACE=${K8S_NAMESPACE}" >> "$GITHUB_ENV"
           echo "K8S_SERVICE_ACCOUNT=${K8S_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
-          echo "GCP_SERVICE_ACCOUNT=${GCP_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
+
+      - name: Bind Service Account from GKE and GCP IAM
+        id: bind-sa-gke-iam
+        run: |
+          gcloud iam service-accounts add-iam-policy-binding ${GKE_SERVICE_ACCOUNT} \
+            --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
+            --role="roles/iam.workloadIdentityUser"
 
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
@@ -207,17 +210,10 @@ jobs:
             -f chart/${VALUES_PATH} \
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
             --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
-            --set serviceAccountEmail=${GCP_SERVICE_ACCOUNT} \
+            --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=15m0s
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
           echo 'Project published successfully'
-
-      - name: Bind Service Account from GKE and GCP IAM
-        id: bind-sa-gke-iam
-        run: |
-          gcloud iam service-accounts add-iam-policy-binding ${GCP_SERVICE_ACCOUNT} \
-            --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
-            --role="roles/iam.workloadIdentityUser"
