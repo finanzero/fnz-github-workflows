@@ -56,7 +56,6 @@ on:
 
 jobs:
   building:
-    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     name: Building project
     runs-on:
       labels: ${{inputs.runner_vm}}
