@@ -7,6 +7,10 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      node_version:
+        required: false
+        type: string
+        default: "16"
       # GCP Variables:
       gcp_project_id:
         required: true
@@ -91,6 +95,10 @@ jobs:
         run: |
           gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
   
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+    
       - name: Prepare website package
         run: |
           set -e
