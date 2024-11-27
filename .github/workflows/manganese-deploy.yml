@@ -154,6 +154,8 @@ jobs:
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
 
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Authenticate to Google Cloud Platform (GCP)
         id: gcp-auth
         uses: google-github-actions/auth@v2
