@@ -122,14 +122,14 @@ jobs:
       - name: Deploy on Beta Server
         id: deploying
         run: |
-          export IMAGE_NAME="${{github}}/$PROJECT_NAME"
+          export ="${{github}}/$PROJECT_NAME"
           
           echo $HOSTS
           echo $PROJECT_NAME
           echo $IMAGE_TAG
           echo $IMAGE_NAME
           echo "port=$PORT" >> "$GITHUB_OUTPUT"
-          echo "${{ secrets.BETA_SERVERS }}" > ./aws-key.pem
+          echo "${{ secrets.BETA_SSH_PRIVATE_KEY }}" > ./aws-key.pem
           chmod 400 ./aws-key.pem
 
           for HOST in $HOSTS; do
