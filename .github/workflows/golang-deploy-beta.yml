@@ -122,7 +122,7 @@ jobs:
       - name: Deploy on Beta Server
         id: deploying
         run: |
-          export ="${{github}}/$PROJECT_NAME"
+          export ="${{inputs.ecr_name}}/$PROJECT_NAME"
           
           echo $HOSTS
           echo $PROJECT_NAME
