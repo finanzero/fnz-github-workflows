@@ -141,7 +141,7 @@ jobs:
               docker container rm ${{needs.building.outputs.project_name}}-beta || echo "No container to remove"
               # aws logs create-log-group --log-group-name ${{needs.building.outputs.project_name}}-syslog-beta || echo "Log group already created"
               # docker run -d --log-driver=awslogs --log-opt awslogs-region=sa-east-1 --log-opt awslogs-group=${{needs.building.outputs.project_name}}-syslog-beta -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-beta ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
-              docker run -d -p ${{ needs.building.outputs.port }}:80 --restart always --name ${{needs.building.outputs.project_name}}-beta ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
+              docker run -d --network host --restart always --name ${{needs.building.outputs.project_name}}-beta ${{inputs.ecr_name}}/${{needs.building.outputs.project_name}}:${{inputs.target_platform}}-${{needs.building.outputs.image_tag}}
               echo 'Project published successfully on $HOST'
             '
           done
