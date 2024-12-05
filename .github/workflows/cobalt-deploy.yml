@@ -7,6 +7,9 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      WP_USER:
+        type: string
+        required: true
       # GCP Variables:
       gcp_project_id:
         required: true
@@ -49,8 +52,6 @@ on:
       WP_SECRET:
         required: true
       CRYPTO_KEY:
-        required: true
-      WP_USER:
         required: true
       WP_PASSWORD:
         required: true
@@ -120,7 +121,7 @@ jobs:
           echo "" >> .env
           echo "NEXT_PUBLIC_WP_SECRET=${{ secrets.WP_SECRET }}" >> .env
           echo "NEXT_PUBLIC_CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}" >> .env
-          echo "NEXT_PUBLIC_WP_USER=${{ secrets.WP_USER }}" >> .env
+          echo "NEXT_PUBLIC_WP_USER=${{ inputs.WP_USER }}" >> .env
           echo "NEXT_PUBLIC_WP_PASSWORD=${{ secrets.WP_PASSWORD }}" >> .env
           echo "NEXT_PUBLIC_GRAPHQL_SECRET=${{ secrets.GRAPHQL_SECRET }}" >> .env
 
