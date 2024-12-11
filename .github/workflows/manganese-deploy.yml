@@ -7,10 +7,6 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
-      node_version:
-        required: false
-        type: string
-        default: "16"
       # GCP Variables:
       gcp_project_id:
         required: true
@@ -36,7 +32,7 @@ on:
         required: false
         type: string
         default: fnzr-repo
-      robot_path:
+      robots:
         required: true
         type: string
       values_path:
@@ -62,7 +58,7 @@ jobs:
       GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
       ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
       ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
-      ROBOT_PATH: ${{inputs.robot_path}}
+      ROBOTS: ${{inputs.robots}}
 
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
@@ -96,20 +92,6 @@ jobs:
         id: create-artifact-registry
         run: |
           gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
-  
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ inputs.node_version }}
-    
-      - name: Prepare website package
-        run: |
-          set -e
-
-          echo "Variables for robots ROBOTS=${ROBOT_PATH}"
-
-          npm install -f && npm run build
-
-          cp ${ROBOT_PATH} ./root/robots.txt
 
       - name: Building and Uploading Docker Image to GCP
         id: building
@@ -127,6 +109,7 @@ jobs:
             -t ${IMAGE_NAME}-latest \
             -t ${IMAGE_NAME}-$IMAGE_TAG \
             -t ${IMAGE_NAME}:pre-build \
+            --build-arg ROBOTS=${ROBOTS}
             -f Dockerfile_ci .
               
           docker image push ${IMAGE_NAME}-latest
