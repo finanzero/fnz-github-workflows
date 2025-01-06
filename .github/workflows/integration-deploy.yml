@@ -51,7 +51,7 @@ on:
 
 jobs:
   building:
-    if: github.event.pull_request.merged == true || github.event.inputs.reason != ''
+    if: github.event.pull_request.merged == true || inputs.reason != ''
     name: Building project
     runs-on:
       labels: ${{inputs.runner_vm}}
