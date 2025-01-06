@@ -177,16 +177,14 @@ jobs:
           export PROJECT_NAME_TO_K8S_NAMESPACE=$(echo "${PROJECT_NAME}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]')
           export K8S_NAMESPACE=${K8S_NAMESPACE:-${PROJECT_NAME_TO_K8S_NAMESPACE}}
           export K8S_SERVICE_ACCOUNT="${K8S_NAMESPACE}-sa"
-          export GCP_SERVICE_ACCOUNT=$(gcloud config get-value account)
 
           echo "K8S_NAMESPACE=${K8S_NAMESPACE}" >> "$GITHUB_ENV"
           echo "K8S_SERVICE_ACCOUNT=${K8S_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
-          echo "GCP_SERVICE_ACCOUNT=${GCP_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
 
       - name: Bind Service Account from GKE and GCP IAM
         id: bind-sa-gke-iam
         run: |
-          gcloud iam service-accounts add-iam-policy-binding ${GCP_SERVICE_ACCOUNT} \
+          gcloud iam service-accounts add-iam-policy-binding ${GKE_SERVICE_ACCOUNT} \
             --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
             --role="roles/iam.workloadIdentityUser"
 
@@ -199,7 +197,7 @@ jobs:
             -f chart/${VALUES_PATH} \
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
             --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
-            --set serviceAccountEmail=${GCP_SERVICE_ACCOUNT} \
+            --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=1h0m0s
 
