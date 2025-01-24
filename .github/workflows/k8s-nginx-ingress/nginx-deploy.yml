@@ -1,0 +1,96 @@
+name: Nginx CI
+
+on:      
+  workflow_dispatch:
+    inputs:
+      runner_vm:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+      env:
+        required: true
+        type: choice
+        options:
+          "beta"
+          "master"
+      # GCP Variables:
+      gke_zone:
+        required: false
+        type: string
+        default: "southamerica-east1-b"
+      k8s_namespace:
+        required: false
+        type: string
+        default: "ingress-nginx"
+      k8s_nginx_name:
+        required: false
+        type: string
+        default: "nginx-ingress"
+      set_values:
+        description: "Optional values for --set in helm command"
+        required: false
+        type: string
+      timeout:
+        description: "Optional timeout value in helm command"
+        required: false
+        type: string
+        default: "15m0s"
+
+jobs:
+  deploy-ingress:
+    name: Deploying Nginx Ingress
+    runs-on:
+      labels: ${{inputs.runner_vm}}
+
+    env:
+      CI: true
+      GCP_PROJECT_ID: ${{ input.env == 'beta' && vars.GCP_PROJECT_ID_BETA || vars.GCP_PROJECT_ID_MASTER  }}
+      K8S_NAMESPACE: ${{inputs.k8s_namespace}}
+      K8S_PROJECT: ${{inputs.k8s_nginx_name}}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ input.env == 'beta' && vars.GCP_SERVICE_ACCOUNT_KEY_BETA || vars.GCP_SERVICE_ACCOUNT_KEY_MASTER  }}
+
+      - name: Set up GKE credentials
+        id: get-gke-credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ input.env == 'beta' && vars.GKE_CLUSTER_BETA || vars.GKE_CLUSTER_MASTER  }}
+          location: ${{ inputs.gke_zone }}
+
+      # Install helm
+      - name: Install Helm
+        id: helm-install
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+      - name: Add ingress-nginx repo in Helm
+        id: ingress-nginx-repo-add
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+          helm repo update
+
+      - name: Deploy the Docker image to the Kubernetes cluster
+        id: k8s-deploy
+        run: |
+          helm upgrade -i \
+            ${K8S_PROJECT} \
+            ingress-nginx/ingress-nginx \
+            -n ${K8S_NAMESPACE} \
+            --create-namespace \
+            -f values.yaml \
+            $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
+            --wait --timeout=${{ inputs.timeout }} --atomic
+
+          kubectl apply -n ${K8S_NAMESPACE} -f ingress.yaml
+
+          kubectl get services -n ${K8S_NAMESPACE} -o wide
+
+          echo 'Nginx ingress deployed successfully'

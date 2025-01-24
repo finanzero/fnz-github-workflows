@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginx-resource
+  namespace: ingress-nginx
+  annotations:
+  	nginx.org/mergeable-ingress-type: "master"
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "b.finan.vc"
+  - host: "api-beta.finanzero.com.br"
