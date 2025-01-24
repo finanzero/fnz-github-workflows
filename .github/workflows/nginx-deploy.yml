@@ -85,11 +85,11 @@ jobs:
             ingress-nginx/ingress-nginx \
             -n ${K8S_NAMESPACE} \
             --create-namespace \
-            -f values.yaml \
+            -f ./k8s-nginx-ingress/values.yaml \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=${{ inputs.timeout }} --atomic
 
-          kubectl apply -n ${K8S_NAMESPACE} -f ingress.yaml
+          kubectl apply -n ${K8S_NAMESPACE} -f ./k8s-nginx-ingress/ingress.yaml
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
