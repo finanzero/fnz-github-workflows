@@ -219,7 +219,7 @@ jobs:
               --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
               --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
               --set profile=${profile} \
-              $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
+              $(if [ -n "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
               --wait --timeout=15m0s --atomic --debug
 
             kubectl get services -n ${K8S_NAMESPACE} -o wide
