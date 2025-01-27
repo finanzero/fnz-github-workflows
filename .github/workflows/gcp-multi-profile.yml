@@ -1,6 +1,4 @@
-name: GCP Deploy - Standard pipeline
-
-on:      
+on:
   workflow_call:
     inputs:
       target_platform:    # arm, x86 or ci (without target platform)
@@ -50,8 +48,6 @@ on:
         required: true
         type: string
 
-
-
     secrets:
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
@@ -60,14 +56,14 @@ jobs:
   building:
     name: Building project
     runs-on:
-        labels: ${{inputs.runner_vm}}
+      labels: ${{ inputs.runner_vm }}
 
     env:
       CI: true
-      NPM_FINANZERO_SECRET: ${{secrets.NPM_FINANZERO_SECRET}}
-      GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
-      ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
-      ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
+      NPM_FINANZERO_SECRET: ${{ secrets.NPM_FINANZERO_SECRET }}
+      GCP_PROJECT_ID: ${{ inputs.gcp_project_id }}
+      ARTIFACT_REGISTRY_HOST: "${{ inputs.artifact_registry_region }}-docker.pkg.dev"
+      ARTIFACT_REGISTRY_REPO: "${{ inputs.artifact_registry_repo }}"
 
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
@@ -92,7 +88,7 @@ jobs:
       - name: get-npm-version
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
-  
+
       - name: Describe commit ID
         id: describe-commit-id
         run: |
@@ -100,7 +96,7 @@ jobs:
 
       - name: Configure Docker Auth to Artifact Registry (GCP)
         id: docker-host-auth
-        uses: 'docker/login-action@v3'
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.ARTIFACT_REGISTRY_HOST }}
           username: _json_key
@@ -113,15 +109,15 @@ jobs:
 
       - name: Building and Uploading Docker Image to GCP
         id: building
-        run: |          
-          export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
-          
-          export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
+        run: |
+          export PROJECT_NAME=${PROJECT_NAME:-$(basename "$PWD")}
+
+          export IMAGE_TAG=${IMAGE_TAG:-"local-$(git rev-parse --short HEAD)"}
           export IMAGE_NAME="${ARTIFACT_REGISTRY_HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${PROJECT_NAME}"
           export IMAGE_NAME_WITH_PLATFORM="${IMAGE_NAME}:${{inputs.target_platform}}"
-          
+
           export NPM_FINANZERO_SECRET=${NPM_FINANZERO_SECRET:-"$(cat ~/.npmrc)"}
-          
+
           echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
           echo "image_name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
           echo "image_name_with_platform=$IMAGE_NAME_WITH_PLATFORM" >> "$GITHUB_OUTPUT"
@@ -136,14 +132,14 @@ jobs:
               -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
               -t ${IMAGE_NAME}:pre-build \
               -f ./Dockerfile_${{ inputs.docker_file_contains_target_platform_in_name && inputs.target_platform || 'ci' }} .
-          
+
           docker image push ${IMAGE_NAME_WITH_PLATFORM}-latest
           docker image push ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG
-          
+
           echo "################# Uploaded docker image to Docker Repository ##################"
           echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-latest"
           echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG"
-          
+
           if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
             docker image push ${IMAGE_NAME}:pre-build
             echo "Pushed image ${IMAGE_NAME}:pre-build"
@@ -206,10 +202,9 @@ jobs:
             --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
             --role="roles/iam.workloadIdentityUser"
 
-      - name: Deploy the Docker image to the Kubernetes cluster
+      - name: Deploy the Docker image to the Kubernetes cluster for each profile
         id: k8s-deploy
         run: |
-          |
           for profile in $SERVICE_PROFILES; do
             helm upgrade -i \
               ${PROJECT_NAME}-$profile chart/ \
@@ -218,11 +213,11 @@ jobs:
               --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
               --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
               --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
-              --set profile=${profile} \
               $(if [ -n "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
+              --set profile=${profile} \
               --wait --timeout=15m0s --atomic --debug
 
             kubectl get services -n ${K8S_NAMESPACE} -o wide
           done
 
-          echo 'Project published successfully'
+          echo 'Projects published successfully'
