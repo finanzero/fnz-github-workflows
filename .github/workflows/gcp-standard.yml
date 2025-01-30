@@ -223,4 +223,4 @@ jobs:
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
-          echo 'Project published successfully $AWS_ACCESS_KEY_ID secret ${{secrets.AWS_ACCESS_KEY_ID}}'
+          echo 'Project published successfully $AWS_ACCESS_KEY_ID secretasdf ${{secrets.AWS_ACCESS_KEY_ID}}'
