@@ -217,7 +217,7 @@ jobs:
             --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
             --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
-            --set AWS_ACCESS_KEY_ID=$(echo "${AWS_ACCESS_KEY_ID}) \
+            --set AWS_ACCESS_KEY_ID=$(echo "${AWS_ACCESS_KEY_ID}") \
             --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
             --wait --timeout=5m0s --debug
           
