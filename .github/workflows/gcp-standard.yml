@@ -219,9 +219,10 @@ jobs:
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --set AWS_ACCESS_KEY_ID=$(echo "${AWS_ACCESS_KEY_ID}) \
             --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
-            --wait --timeout=15m0s --atomic --debug
+            --wait --timeout=5m0s --debug
+          
+          echo "sdfasadf ${AWS_ACCESS_KEY_ID}"
 
-          echo "${AWS_ACCESS_KEY_ID}asdf"
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
-          echo 'Project published successfully $AWS_ACCESS_KEY_ID secretasdf ${{secrets.AWS_ACCESS_KEY_ID}}'
+          echo 'Project published successfully $AWS_ACCESS_KEY_ID secret: ${{secrets.AWS_ACCESS_KEY_ID}}'
