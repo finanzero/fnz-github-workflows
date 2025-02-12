@@ -22,7 +22,7 @@ on:
       gke_zone:
         required: false
         type: string
-        default: "southamerica-east1-b"
+        default: "southamerica-east1"
       gke_service_account:
         required: true
         type: string
