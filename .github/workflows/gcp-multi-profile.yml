@@ -51,6 +51,10 @@ on:
     secrets:
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
 
 jobs:
   building:
@@ -213,6 +217,8 @@ jobs:
               --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
               --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
               --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
+              --set AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
+              --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
               $(if [ -n "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
               --set profile=${profile} \
               --wait --timeout=15m0s --debug
