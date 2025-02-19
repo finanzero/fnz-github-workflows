@@ -1,0 +1,219 @@
+name: GCP Deploy - Standard pipeline
+
+on:      
+  workflow_call:
+    inputs:
+      target_platform:    # arm, x86 or ci (without target platform)
+        required: true
+        type: string
+      docker_file_contains_target_platform_in_name:
+        type: boolean
+        default: true
+      runner_vm:
+        required: true
+        type: string
+      # GCP Variables:
+      gcp_project_id:
+        required: true
+        type: string
+      gke_cluster:
+        required: true
+        type: string
+      gke_zone:
+        required: false
+        type: string
+        default: "southamerica-east1-b"
+      gke_service_account:
+        required: true
+        type: string
+      k8s_namespace:
+        required: false
+        type: string
+      artifact_registry_region:
+        required: false
+        type: string
+        default: "southamerica-east1"
+      artifact_registry_repo:
+        required: false
+        type: string
+        default: fnzr-repo
+      values_path:
+        required: false
+        type: string
+        default: values.yaml
+      set_values:
+        description: "Optional values for --set in helm command"
+        required: false
+        type: string
+
+
+
+    secrets:
+      GCP_SERVICE_ACCOUNT_KEY:
+        required: true
+
+jobs:
+  building:
+    name: Building project
+    runs-on:
+        labels: ${{inputs.runner_vm}}
+
+    env:
+      CI: true
+      NPM_FINANZERO_SECRET: ${{secrets.NPM_FINANZERO_SECRET}}
+      GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
+      ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
+      ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
+
+    outputs:
+      project_name: ${{ steps.building.outputs.project_name }}
+      image_tag: ${{ steps.building.outputs.image_tag }}
+      image_name: ${{ steps.building.outputs.image_name_with_platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Setup gcloud CLI
+        id: setup-gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+  
+      - name: Describe commit ID
+        id: describe-commit-id
+        run: |
+          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Configure Docker Auth to Artifact Registry (GCP)
+        id: docker-host-auth
+        uses: 'docker/login-action@v3'
+        with:
+          registry: ${{ env.ARTIFACT_REGISTRY_HOST }}
+          username: _json_key
+          password: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Create Artifact Registry (If not exists)
+        id: create-artifact-registry
+        run: |
+          gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
+
+      - name: Building and Uploading Docker Image to GCP
+        id: building
+        run: |          
+          export PROJECT_NAME=${PROJECT_NAME:-`basename "$PWD"`}
+          
+          export IMAGE_TAG=${IMAGE_TAG:-"local-`git rev-parse --short HEAD`"}
+          export IMAGE_NAME="${ARTIFACT_REGISTRY_HOST}/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${PROJECT_NAME}"
+          export IMAGE_NAME_WITH_PLATFORM="${IMAGE_NAME}:${{inputs.target_platform}}"
+          
+          export NPM_FINANZERO_SECRET=${NPM_FINANZERO_SECRET:-"$(cat ~/.npmrc)"}
+          
+          echo "project_name=$PROJECT_NAME" >> "$GITHUB_OUTPUT"
+          echo "image_name=$IMAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "image_name_with_platform=$IMAGE_NAME_WITH_PLATFORM" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "current version=${{steps.package-version.outputs.current-version}}"
+          echo "current commit=$COMMIT_ID"
+
+          docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
+              --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
+              --build-arg COMMIT_ID=$COMMIT_ID \
+              -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
+              -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
+              -t ${IMAGE_NAME}:pre-build \
+              -f ./Dockerfile_${{ inputs.docker_file_contains_target_platform_in_name && inputs.target_platform || 'ci' }} .
+          
+          docker image push ${IMAGE_NAME_WITH_PLATFORM}-latest
+          docker image push ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG
+          
+          echo "################# Uploaded docker image to Docker Repository ##################"
+          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-latest"
+          echo "Pushed image ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG"
+          
+          if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
+            docker image push ${IMAGE_NAME}:pre-build
+            echo "Pushed image ${IMAGE_NAME}:pre-build"
+          fi
+
+  deploying:
+    if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
+    name: Deploying ${{inputs.target_platform}} project
+    runs-on:
+      labels: ${{inputs.runner_vm}}
+
+    needs: building
+    env:
+      CI: true
+      GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
+      GKE_SERVICE_ACCOUNT: ${{inputs.gke_service_account}}
+      VALUES_PATH: ${{inputs.values_path}}
+      K8S_NAMESPACE: ${{inputs.k8s_namespace}}
+      PROJECT_NAME: ${{needs.building.outputs.project_name}}
+      IMAGE_NAME: ${{needs.building.outputs.image_name}}
+      IMAGE_TAG: ${{needs.building.outputs.image_tag}}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud Platform (GCP)
+        id: gcp-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Set up GKE credentials
+        id: get-gke-credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ inputs.gke_cluster }}
+          location: ${{ inputs.gke_zone }}
+
+      # Install helm
+      - name: Install Helm
+        id: helm-install
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+
+      - name: Generate variables to K8S deploy
+        id: k8s-deploy-envs
+        run: |
+          export PROJECT_NAME_TO_K8S_NAMESPACE=$(echo "${PROJECT_NAME}" | tr -cd '[:alnum:]' | tr '[:upper:]' '[:lower:]')
+          export K8S_NAMESPACE=${K8S_NAMESPACE:-${PROJECT_NAME_TO_K8S_NAMESPACE}}
+          export K8S_SERVICE_ACCOUNT="${K8S_NAMESPACE}-sa"
+
+          echo "K8S_NAMESPACE=${K8S_NAMESPACE}" >> "$GITHUB_ENV"
+          echo "K8S_SERVICE_ACCOUNT=${K8S_SERVICE_ACCOUNT}" >> "$GITHUB_ENV"
+
+      - name: Bind Service Account from GKE and GCP IAM
+        id: bind-sa-gke-iam
+        run: |
+          gcloud iam service-accounts add-iam-policy-binding ${GKE_SERVICE_ACCOUNT} \
+            --member="serviceAccount:${GCP_PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/${K8S_SERVICE_ACCOUNT}]" \
+            --role="roles/iam.workloadIdentityUser"
+
+      - name: Deploy the Docker image to the Kubernetes cluster
+        id: k8s-deploy
+        run: |
+          helm upgrade -i \
+            ${PROJECT_NAME} chart/ \
+            -n ${K8S_NAMESPACE} --create-namespace \
+            -f chart/${VALUES_PATH} \
+            --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
+            --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
+            --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
+            $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
+            --wait --timeout=15m0s --debug
+
+          kubectl get services -n ${K8S_NAMESPACE} -o wide
+
+          echo 'Project published successfully'
