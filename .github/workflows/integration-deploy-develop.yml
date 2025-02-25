@@ -98,7 +98,7 @@ jobs:
           export IMAGE_NAME="${{secrets.CR_INTEGRATIONS}}/$PROJECT_NAME"
           export CONTAINER_RUN_OPTS="-d"
           export CONTAINER_CMD="npm run beta_docker"
-          export HOSTS="api-beta.finanzero.com.br"
+          export HOSTS="beta-aws.finan0.com.br"
           export GREEN='\033[0;32m'
           export PUBLISHING="true"
 
