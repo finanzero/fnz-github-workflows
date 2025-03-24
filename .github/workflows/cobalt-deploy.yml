@@ -129,8 +129,9 @@ jobs:
             -t ${IMAGE_NAME}-latest \
             -t ${IMAGE_NAME}-$IMAGE_TAG \
             -t ${IMAGE_NAME}:pre-build \
-            -f Dockerfile_ci .
-              
+            -f Dockerfile_ci . \
+            --add-host finanzero.com.br:34.160.80.40
+
           docker image push ${IMAGE_NAME}-latest
           docker image push ${IMAGE_NAME}-$IMAGE_TAG
           
