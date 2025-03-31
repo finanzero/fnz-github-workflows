@@ -54,6 +54,8 @@ on:
         required: false
       AWS_SECRET_ACCESS_KEY:
         required: false
+      INTEGRATION_CORE_KEY:
+        required: true
 
 jobs:
   building:
@@ -131,6 +133,7 @@ jobs:
           docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
               --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
               --build-arg COMMIT_ID=$COMMIT_ID \
+              --build-arg INTEGRATION_CORE_KEY="${{secrets.INTEGRATION_CORE_KEY}}" \
               -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
               -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
               -t ${IMAGE_NAME}:pre-build \
