@@ -54,7 +54,7 @@ on:
         required: false
       AWS_SECRET_ACCESS_KEY:
         required: false
-      INTEGRATION_CORE_KEY:
+      FNZ_REPOSITORIES_KEY:
         required: false
 
 jobs:
@@ -131,7 +131,7 @@ jobs:
           echo "current commit=$COMMIT_ID"
 
           docker buildx build \
-              --build-arg INTEGRATION_CORE_KEY="${{secrets.INTEGRATION_CORE_KEY}}" \
+              --build-arg FNZ_REPOSITORIES_KEY="${{secrets.FNZ_REPOSITORIES_KEY}}" \
               --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
               --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
               --build-arg COMMIT_ID=$COMMIT_ID \
