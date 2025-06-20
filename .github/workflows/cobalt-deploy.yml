@@ -14,6 +14,9 @@ on:
       gcp_project_id:
         required: true
         type: string
+      gcp_url_map_name:
+        required: true
+        type: string
       gke_cluster:
         required: true
         type: string
@@ -126,6 +129,7 @@ jobs:
           echo "NEXT_PUBLIC_GRAPHQL_SECRET=${{ secrets.GRAPHQL_SECRET }}" >> .env
           echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" >> .env
           echo "GCP_PROJECT_ID=${{ inputs.gcp_project_id }}" >> .env
+          echo "GCP_URL_MAP_NAME=${{ inputs.gcp_url_map_name }}" >> .env
 
           docker image build \
             -t ${IMAGE_NAME}-latest \
