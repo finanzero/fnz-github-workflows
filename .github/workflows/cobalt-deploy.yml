@@ -60,6 +60,8 @@ on:
         required: true
       GRAPHQL_SECRET:
         required: true
+      GCP_ACCOUNT_KEY:
+        required: true
 
 jobs:
   building:
@@ -127,7 +129,7 @@ jobs:
           echo "NEXT_PUBLIC_WP_USER=${{ inputs.WP_USER }}" >> .env
           echo "NEXT_PUBLIC_WP_PASSWORD=${{ secrets.WP_PASSWORD }}" >> .env
           echo "NEXT_PUBLIC_GRAPHQL_SECRET=${{ secrets.GRAPHQL_SECRET }}" >> .env
-          echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" >> .env
+          echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_ACCOUNT_KEY }}" >> .env
           echo "GCP_PROJECT_ID=${{ inputs.gcp_project_id }}" >> .env
           echo "GCP_URL_MAP_NAME=${{ inputs.gcp_url_map_name }}" >> .env
 
