@@ -52,8 +52,6 @@ on:
     secrets:
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
-      WP_SECRET:
-        required: true
       CRYPTO_KEY:
         required: true
       WP_PASSWORD:
@@ -124,11 +122,10 @@ jobs:
           mv ${ENV_PATH} .env
 
           echo "" >> .env
-          echo "NEXT_PUBLIC_WP_SECRET=${{ secrets.WP_SECRET }}" >> .env
-          echo "NEXT_PUBLIC_CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}" >> .env
-          echo "NEXT_PUBLIC_WP_USER=${{ inputs.WP_USER }}" >> .env
-          echo "NEXT_PUBLIC_WP_PASSWORD=${{ secrets.WP_PASSWORD }}" >> .env
-          echo "NEXT_PUBLIC_GRAPHQL_SECRET=${{ secrets.GRAPHQL_SECRET }}" >> .env
+          echo "WP_USER=${{ inputs.WP_USER }}" >> .env
+          echo "CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}" >> .env
+          echo "WP_PASSWORD=${{ secrets.WP_PASSWORD }}" >> .env
+          echo "GRAPHQL_SECRET=${{ secrets.GRAPHQL_SECRET }}" >> .env
           echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_ACCOUNT_KEY }}" >> .env
           echo "GCP_PROJECT_ID=${{ inputs.gcp_project_id }}" >> .env
           echo "GCP_URL_MAP_NAME=${{ inputs.gcp_url_map_name }}" >> .env
