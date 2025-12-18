@@ -46,6 +46,10 @@ on:
     secrets:
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
+      WORDPRESS_DB_PASSWORD:
+        required: true
+      CRYPTOKEY:
+        required: true
 
 jobs:
   building:
@@ -140,6 +144,8 @@ jobs:
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
       IMAGE_NAME: ${{needs.building.outputs.image_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
+      WORDPRESS_DB_PASSWORD: ${{ secrets.WORDPRESS_DB_PASSWORD }}
+      CRYPTOKEY: ${{ secrets.CRYPTOKEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -196,6 +202,8 @@ jobs:
             --set image.name=${IMAGE_NAME}-${IMAGE_TAG} \
             --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
             --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
+            --set secrets.WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD} \
+            --set secrets.CRYPTOKEY=${CRYPTOKEY} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=15m0s
 
