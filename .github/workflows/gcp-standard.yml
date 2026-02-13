@@ -220,9 +220,9 @@ jobs:
             --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
             --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
-            --set secrets.AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
-            --set secrets.AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
-            --set secrets.GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
+            --set AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
+            --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
+            --set GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
             --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
