@@ -1,0 +1,15 @@
+controller:
+  replicaCount: 1
+  # New class name to avoid conflicts with existing NGINX Ingress Controller
+  ingressClass:
+    name: nginx-f5
+    create: true
+    setAsDefaultIngress: false # Keep it false to avoid conflicts with existing NGINX Ingress Controller
+  
+  # Use ClusterIP since we are behind the GCP Load Balancer
+  service:
+    create: true
+    type: ClusterIP
+    annotations:
+      cloud.google.com/neg: '{"exposed_ports": {"80":{"name": "f5-ingress-80-neg"}}}'
+
