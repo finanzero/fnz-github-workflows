@@ -1,0 +1,21 @@
+# Copilot Chat Workflow
+
+## Chat kickoff
+- When a new chat session starts, immediately request the Jira card identifier in the format `NAR-<digits>` and the development type (`hotfix` or `feature`). Confirm or create the working branch as `[type]/NAR-<digits>(-[dashed-description])` before moving on.
+
+## Post-code-generation summary
+- Collect any optional description and ensure the branch name matches `[type]/NAR-[card-number](-[dashed-description])?` once the card details are confirmed.
+- After the user provides the card number or when prompted via '#jira', before every prompt (to retrieve possible card updates), run `acli jira workitem view <card>` (or the appropriate CLI variant) to pull the issue details and use that content as context; summarize key fields (status, assignee, summary, description highlights) back to the user so the context is available before coding on every context change using the card change.
+- When asked to add or update a Jira comment, build the message with inline Atlassian Document Format (ADF) JSON and avoid temporary files: wrap the JSON in single quotes so double quotes survive, then run `acli jira workitem comment create --key <card> --body '<adf-json>'`. Follow up with `acli jira workitem comment list --key <card>` to confirm the comment rendered correctly and capture the comment ID in the response.
+- After every response that delivers code changes or file edits, append two extra sections titled **Commit Summary** and **PR Description**.
+- The commit summary must be a single line following the pattern `NAR-<digits> - <short description of the whole changes>`. Base the short description on the staged/working copy changes you just delivered. Use the numeric ticket identifier provided in the conversation; if none is available, derive it from the current branch name (e.g., `feature/NAR-1124`) and only ask for confirmation if the branch is missing that pattern.
+- The PR description should be written from the perspective of the full diff against the base branch: explain what changed, why it matters, and provide concrete examples of how to use the new behavior or how it affects data/flows so it can be dropped into the card workflow verbatim.
+- Keep both sections concise and high-signal so they are ready to paste directly into the card without additional editing.
+- Handle VCS commands interactively after every response with changes or when prompted via 'lazymode':
+	- Accept optional numeric or named arguments like `lazymode (4|pr)` to resume from a specific step; when omitted, start at step 1 and advance sequentially. Always restate where the flow will begin before executing.
+	- At each step, echo the command to be executed and proceed only after an explicit "yes".
+	1. add - Describe the exact files or diff hunks to stage and ask for confirmation before running `git add` (default to `git add .` only when explicitly asked).
+	2. commit - Once staging is approved and complete, summarize the staged changes and ask permission to run `git commit -m "NAR-<digits> - <short description>"`.
+	3. push - After a successful commit, state what will be pushed (branch name, remote) and request confirmation before running `git push`.
+	4. pr - Post-push, confirm the desired base branch (default master for production or develop for beta). Write the previously generated PR description into a repo-local temp file (e.g., `.tmp_pr_body.md`) with a heredoc, then run `gh pr create --base <base-branch> --head <current-branch> --title "${COMMIT_SUMMARY}" --body-file .tmp_pr_body.md --assignee @me`. Capture the PR URL and delete the temp file once the command succeeds.
+	5. comment - With the PR URL, post a Jira comment that includes the full link text so it renders as a clickable hyperlink. Build an ADF JSON payload (paragraph + `bulletList`) using the direct URL string for the link and run `acli jira workitem comment create --key <card> --body '<adf-json>'`. Follow up with `acli jira workitem comment list --key <card>` to verify the new comment ID and note it back to the user.
