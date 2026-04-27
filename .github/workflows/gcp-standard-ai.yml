@@ -88,7 +88,7 @@ jobs:
 
       - name: Setup gcloud CLI
         id: setup-gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
@@ -181,7 +181,7 @@ jobs:
 
       - name: Set up GKE credentials
         id: get-gke-credentials
-        uses: google-github-actions/get-gke-credentials@v2
+        uses: google-github-actions/get-gke-credentials@v3
         with:
           cluster_name: ${{ inputs.gke_cluster }}
           location: ${{ inputs.gke_zone }}
