@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: master-ghub
+  namespace: default
+  annotations:
+    nginx.org/mergeable-ingress-type: "master"
+spec:
+  ingressClassName: nginx-f5
+  rules:
+  - host: ghub.finanzero.com.br
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: master-hub
+  namespace: default
+  annotations:
+    nginx.org/mergeable-ingress-type: "master"
+spec:
+  ingressClassName: nginx-f5
+  rules:
+  - host: hub.finanzero.com.br
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: master-api
+  namespace: default
+  annotations:
+    nginx.org/mergeable-ingress-type: "master"
+spec:
+  ingressClassName: nginx-f5
+  rules:
+  - host: api.finanzero.com.br
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: master-hub-finan0
+  namespace: default
+  annotations:
+    nginx.org/mergeable-ingress-type: "master"
+spec:
+  ingressClassName: nginx-f5
+  rules:
+  - host: hub.gcp.finan0.com.br
