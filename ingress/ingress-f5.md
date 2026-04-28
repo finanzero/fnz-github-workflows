@@ -13,6 +13,12 @@ helm install nginx-f5 nginx-stable/nginx-ingress \
   --create-namespace \
   -f values-f5-prod.yaml
 ```
+## Create master ingress
+Execute following command to define a master ingress for shared hostnames.
+```sh
+kubectl apply -f ingress-master.yaml
+```
+
 
 ## Update Load Balancer
 Create two new Backends:
