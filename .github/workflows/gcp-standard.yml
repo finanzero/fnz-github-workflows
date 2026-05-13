@@ -45,6 +45,10 @@ on:
         description: "Optional values for --set in helm command"
         required: false
         type: string
+      docker_build_args:
+        description: "Optional extra --build-arg for docker build (KEY=VALUE format, one arg)"
+        required: false
+        type: string
 
 
     secrets:
@@ -71,6 +75,7 @@ jobs:
       GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
       ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
       ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
+      DOCKER_BUILD_ARGS: ${{inputs.docker_build_args}}
 
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
@@ -132,11 +137,17 @@ jobs:
           echo "current version=${{steps.package-version.outputs.current-version}}"
           echo "current commit=$COMMIT_ID"
 
+          EXTRA_BUILD_ARGS=""
+          if [ -n "$DOCKER_BUILD_ARGS" ]; then
+            EXTRA_BUILD_ARGS="--build-arg $DOCKER_BUILD_ARGS"
+          fi
+
           docker buildx build \
               --build-arg FNZ_REPOSITORIES_KEY="${{secrets.FNZ_REPOSITORIES_KEY}}" \
               --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
               --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
               --build-arg COMMIT_ID=$COMMIT_ID \
+              $EXTRA_BUILD_ARGS \
               -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
               -t ${IMAGE_NAME_WITH_PLATFORM}-$IMAGE_TAG \
               -t ${IMAGE_NAME}:pre-build \
