@@ -62,6 +62,10 @@ on:
         required: false
       FNZ_REPOSITORIES_KEY:
         required: false
+      JWT_PRIVATE_KEY:
+        required: false
+      JWT_PUBLIC_KEY:
+        required: false
 
 jobs:
   building:
@@ -234,6 +238,8 @@ jobs:
             --set AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
             --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
             --set GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
+            $(if [ -n "${{ secrets.JWT_PRIVATE_KEY }}" ]; then echo "--set-string secrets.JWT_PRIVATE_KEY=${{ secrets.JWT_PRIVATE_KEY }}"; fi) \
+            $(if [ -n "${{ secrets.JWT_PUBLIC_KEY }}" ]; then echo "--set-string secrets.JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}"; fi) \
             --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
