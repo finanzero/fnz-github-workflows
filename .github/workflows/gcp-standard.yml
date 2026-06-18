@@ -62,6 +62,8 @@ on:
         required: false
       FNZ_REPOSITORIES_KEY:
         required: false
+      FIREBASE_SA_JSON:
+        required: false
 
 jobs:
   building:
@@ -222,6 +224,8 @@ jobs:
 
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
         run: |
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
@@ -234,6 +238,7 @@ jobs:
             --set AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
             --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
             --set GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
+            $(if [ -n "$FIREBASE_SA_JSON" ]; then echo "--set-string secrets.FIREBASE_SA_JSON=$FIREBASE_SA_JSON"; fi) \
             --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
