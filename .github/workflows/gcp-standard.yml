@@ -62,6 +62,10 @@ on:
         required: false
       FNZ_REPOSITORIES_KEY:
         required: false
+      JWT_PRIVATE_KEY:
+        required: false
+      JWT_PUBLIC_KEY:
+        required: false
       FIREBASE_SA_JSON:
         required: false
 
@@ -85,17 +89,17 @@ jobs:
       image_name: ${{ steps.building.outputs.image_name_with_platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to Google Cloud Platform (GCP)
         id: gcp-auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
       - name: Setup gcloud CLI
         id: setup-gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
@@ -110,7 +114,7 @@ jobs:
 
       - name: Configure Docker Auth to Artifact Registry (GCP)
         id: docker-host-auth
-        uses: 'docker/login-action@v3'
+        uses: 'docker/login-action@v4'
         with:
           registry: ${{ env.ARTIFACT_REGISTRY_HOST }}
           username: _json_key
@@ -184,17 +188,17 @@ jobs:
       IMAGE_NAME: ${{needs.building.outputs.image_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to Google Cloud Platform (GCP)
         id: gcp-auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
       - name: Set up GKE credentials
         id: get-gke-credentials
-        uses: google-github-actions/get-gke-credentials@v2
+        uses: google-github-actions/get-gke-credentials@v3
         with:
           cluster_name: ${{ inputs.gke_cluster }}
           location: ${{ inputs.gke_zone }}
@@ -238,6 +242,8 @@ jobs:
             --set AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
             --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
             --set GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
+            $(if [ -n "${{ secrets.JWT_PRIVATE_KEY }}" ]; then echo "--set-string secrets.JWT_PRIVATE_KEY=${{ secrets.JWT_PRIVATE_KEY }}"; fi) \
+            $(if [ -n "${{ secrets.JWT_PUBLIC_KEY }}" ]; then echo "--set-string secrets.JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}"; fi) \
             $(if [ -n "$FIREBASE_SA_JSON" ]; then echo "--set-string secrets.FIREBASE_SA_JSON=$FIREBASE_SA_JSON"; fi) \
             --wait --timeout=5m0s --atomic --debug
 

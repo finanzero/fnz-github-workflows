@@ -22,7 +22,7 @@ on:
       gke_zone:
         required: false
         type: string
-        default: "southamerica-east1-b"
+        default: "southamerica-east1"
       gke_service_account:
         required: true
         type: string
@@ -47,10 +47,17 @@ on:
         type: string
 
 
-
     secrets:
       GCP_SERVICE_ACCOUNT_KEY:
         required: true
+      GCP_GENAI_KEY:
+        required: false
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      FNZ_REPOSITORIES_KEY:
+        required: false
 
 jobs:
   building:
@@ -71,17 +78,17 @@ jobs:
       image_name: ${{ steps.building.outputs.image_name_with_platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Authenticate to Google Cloud Platform (GCP)
         id: gcp-auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
 
       - name: Setup gcloud CLI
         id: setup-gcloud
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
@@ -96,7 +103,7 @@ jobs:
 
       - name: Configure Docker Auth to Artifact Registry (GCP)
         id: docker-host-auth
-        uses: 'docker/login-action@v3'
+        uses: 'docker/login-action@v4'
         with:
           registry: ${{ env.ARTIFACT_REGISTRY_HOST }}
           username: _json_key
@@ -125,7 +132,9 @@ jobs:
           echo "current version=${{steps.package-version.outputs.current-version}}"
           echo "current commit=$COMMIT_ID"
 
-          docker buildx build --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
+          docker buildx build \
+              --build-arg FNZ_REPOSITORIES_KEY="${{secrets.FNZ_REPOSITORIES_KEY}}" \
+              --build-arg NPM_RC="$NPM_FINANZERO_SECRET" \
               --build-arg VERSION_ID=${{steps.package-version.outputs.current-version}} \
               --build-arg COMMIT_ID=$COMMIT_ID \
               -t ${IMAGE_NAME_WITH_PLATFORM}-latest \
@@ -161,7 +170,6 @@ jobs:
       PROJECT_NAME: ${{needs.building.outputs.project_name}}
       IMAGE_NAME: ${{needs.building.outputs.image_name}}
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -173,7 +181,7 @@ jobs:
 
       - name: Set up GKE credentials
         id: get-gke-credentials
-        uses: google-github-actions/get-gke-credentials@v2
+        uses: google-github-actions/get-gke-credentials@v3
         with:
           cluster_name: ${{ inputs.gke_cluster }}
           location: ${{ inputs.gke_zone }}
@@ -212,7 +220,10 @@ jobs:
             --set serviceAccountName=${K8S_SERVICE_ACCOUNT} \
             --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
-            --wait --timeout=15m0s --debug
+            --set AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} \
+            --set AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} \
+            --set secrets.GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
+            --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
