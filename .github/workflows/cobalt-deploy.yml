@@ -106,7 +106,10 @@ jobs:
         id: create-artifact-registry
         run: |
           gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
-  
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
       - name: Building and Uploading Docker Image to GCP
         id: building
         run: |
@@ -130,23 +133,27 @@ jobs:
           echo "GCP_PROJECT_ID=${{ inputs.gcp_project_id }}" >> .env
           echo "GCP_URL_MAP_NAME=${{ inputs.gcp_url_map_name }}" >> .env
 
-          docker image build \
-            -t ${IMAGE_NAME}-latest \
-            -t ${IMAGE_NAME}-$IMAGE_TAG \
-            -t ${IMAGE_NAME}:pre-build \
+          # :pre-build is only ever pushed when skip-deploy is set, same as
+          # before the buildx switch below.
+          TAGS=(-t "${IMAGE_NAME}-latest" -t "${IMAGE_NAME}-$IMAGE_TAG")
+          if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
+            TAGS+=(-t "${IMAGE_NAME}:pre-build")
+          fi
+
+          # --cache-from/--cache-to type=gha persists both the Docker layer
+          # cache and (via Dockerfile_ci's cache mount) Turbopack's
+          # .next/cache across these otherwise-ephemeral GitHub-hosted
+          # runners, so `next build` gets a warm cache on repeat runs.
+          docker buildx build \
+            --push \
+            "${TAGS[@]}" \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
             -f Dockerfile_ci .
 
-          docker image push ${IMAGE_NAME}-latest
-          docker image push ${IMAGE_NAME}-$IMAGE_TAG
-          
           echo "################# Uploaded docker image to Docker Repository ##################"
           echo "Pushed image ${IMAGE_NAME}-latest"
           echo "Pushed image ${IMAGE_NAME}-$IMAGE_TAG"
-          
-          if [[ ${{contains( github.event.pull_request.labels.*.name, 'skip-deploy')}} = 'true' ]]; then
-            docker image push ${IMAGE_NAME}:pre-build
-            echo "Pushed image ${IMAGE_NAME}:pre-build"
-          fi
 
   deploying:
     if: ${{ !contains( github.event.pull_request.labels.*.name, 'skip-deploy') }}
