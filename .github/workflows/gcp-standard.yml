@@ -66,6 +66,8 @@ on:
         required: false
       JWT_PUBLIC_KEY:
         required: false
+      FIREBASE_SA_JSON:
+        required: false
 
 jobs:
   building:
@@ -226,6 +228,8 @@ jobs:
 
       - name: Deploy the Docker image to the Kubernetes cluster
         id: k8s-deploy
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
         run: |
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
@@ -240,6 +244,7 @@ jobs:
             --set GCP_GENAI_KEY=${{secrets.GCP_GENAI_KEY}} \
             $(if [ -n "${{ secrets.JWT_PRIVATE_KEY }}" ]; then echo "--set-string secrets.JWT_PRIVATE_KEY=${{ secrets.JWT_PRIVATE_KEY }}"; fi) \
             $(if [ -n "${{ secrets.JWT_PUBLIC_KEY }}" ]; then echo "--set-string secrets.JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}"; fi) \
+            $(if [ -n "$FIREBASE_SA_JSON" ]; then echo "--set-string secrets.FIREBASE_SA_JSON=$FIREBASE_SA_JSON"; fi) \
             --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
