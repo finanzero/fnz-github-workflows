@@ -68,6 +68,8 @@ on:
         required: false
       FIREBASE_SA_JSON:
         required: false
+      CRYPTO_KEY:
+        required: false
 
 jobs:
   building:
@@ -245,6 +247,7 @@ jobs:
             $(if [ -n "${{ secrets.JWT_PRIVATE_KEY }}" ]; then echo "--set-string secrets.JWT_PRIVATE_KEY=${{ secrets.JWT_PRIVATE_KEY }}"; fi) \
             $(if [ -n "${{ secrets.JWT_PUBLIC_KEY }}" ]; then echo "--set-string secrets.JWT_PUBLIC_KEY=${{ secrets.JWT_PUBLIC_KEY }}"; fi) \
             $(if [ -n "$FIREBASE_SA_JSON" ]; then echo "--set-string secrets.FIREBASE_SA_JSON=$FIREBASE_SA_JSON"; fi) \
+            $(if [ -n "${{ secrets.CRYPTO_KEY }}" ]; then echo "--set-string secrets.CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}"; fi) \
             --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
