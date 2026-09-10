@@ -51,7 +51,7 @@ on:
       CRYPTOKEY:
         required: true
       COMPOSER_AUTH:
-        description: "Optional composer auth.json contents (JSON string), forwarded as a Docker build-arg for services that install PHP dependencies via Composer during the image build (e.g. license-gated plugins). Unused services can omit it."
+        description: "Optional composer auth.json contents (JSON string), mounted as a BuildKit secret (id: composer_auth) for services whose Dockerfile runs Composer against a private, license-gated repository during the image build. Unused services can omit it."
         required: false
 
 jobs:
@@ -62,6 +62,7 @@ jobs:
 
     env:
       CI: true
+      DOCKER_BUILDKIT: 1
       GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
       ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
       ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
@@ -118,7 +119,7 @@ jobs:
             -t ${IMAGE_NAME}-$IMAGE_TAG \
             -t ${IMAGE_NAME}:pre-build \
             --build-arg ROBOTS=${ROBOTS} \
-            --build-arg COMPOSER_AUTH="${COMPOSER_AUTH}" \
+            --secret id=composer_auth,env=COMPOSER_AUTH \
             -f Dockerfile_ci .
               
           docker image push ${IMAGE_NAME}-latest
