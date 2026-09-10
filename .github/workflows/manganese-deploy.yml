@@ -50,6 +50,9 @@ on:
         required: true
       CRYPTOKEY:
         required: true
+      COMPOSER_AUTH:
+        description: "Optional composer auth.json contents (JSON string), forwarded as a Docker build-arg for services that install PHP dependencies via Composer during the image build (e.g. license-gated plugins). Unused services can omit it."
+        required: false
 
 jobs:
   building:
@@ -63,6 +66,7 @@ jobs:
       ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
       ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
       ROBOTS: ${{inputs.robots}}
+      COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}
 
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
@@ -114,6 +118,7 @@ jobs:
             -t ${IMAGE_NAME}-$IMAGE_TAG \
             -t ${IMAGE_NAME}:pre-build \
             --build-arg ROBOTS=${ROBOTS} \
+            --build-arg COMPOSER_AUTH="${COMPOSER_AUTH}" \
             -f Dockerfile_ci .
               
           docker image push ${IMAGE_NAME}-latest
