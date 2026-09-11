@@ -56,6 +56,8 @@ on:
         required: true
       WP_PASSWORD:
         required: true
+      GRAPHQL_SECRET:
+        required: true
       GCP_ACCOUNT_KEY:
         required: true
 
@@ -126,6 +128,7 @@ jobs:
           echo "WP_USER=${{ inputs.WP_USER }}" >> .env
           echo "CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}" >> .env
           echo "WP_PASSWORD=${{ secrets.WP_PASSWORD }}" >> .env
+          echo "GRAPHQL_SECRET=${{ secrets.GRAPHQL_SECRET }}" >> .env
           echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_ACCOUNT_KEY }}" >> .env
           echo "GCP_PROJECT_ID=${{ inputs.gcp_project_id }}" >> .env
           echo "GCP_URL_MAP_NAME=${{ inputs.gcp_url_map_name }}" >> .env
