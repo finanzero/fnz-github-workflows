@@ -53,6 +53,8 @@ on:
       COMPOSER_AUTH:
         description: "Optional composer auth.json contents (JSON string), mounted as a BuildKit secret (id: composer_auth) for services whose Dockerfile runs Composer against a private, license-gated repository during the image build. Unused services can omit it."
         required: false
+      GRAPHQL_JWT_AUTH_SECRET_KEY:
+        required: true
 
 jobs:
   building:
@@ -152,6 +154,7 @@ jobs:
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
       WORDPRESS_DB_PASSWORD: ${{ secrets.WORDPRESS_DB_PASSWORD }}
       CRYPTOKEY: ${{ secrets.CRYPTOKEY }}
+      GRAPHQL_JWT_AUTH_SECRET_KEY: ${{ secrets.GRAPHQL_JWT_AUTH_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v6
@@ -210,6 +213,7 @@ jobs:
             --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             --set secrets.WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD} \
             --set secrets.CRYPTOKEY=${CRYPTOKEY} \
+            --set secrets.GRAPHQL_JWT_AUTH_SECRET_KEY=${GRAPHQL_JWT_AUTH_SECRET_KEY} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=15m0s
 
