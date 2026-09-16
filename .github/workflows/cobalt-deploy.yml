@@ -108,7 +108,7 @@ jobs:
           gcloud artifacts repositories create ${ARTIFACT_REGISTRY_REPO} --repository-format=docker --location=${{inputs.artifact_registry_region}} || echo 'Docker Repository already exists (probably)'
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Building and Uploading Docker Image to GCP
         id: building
