@@ -50,6 +50,11 @@ on:
         required: true
       CRYPTOKEY:
         required: true
+      COMPOSER_AUTH:
+        description: "Optional composer auth.json contents (JSON string), mounted as a BuildKit secret (id: composer_auth) for services whose Dockerfile runs Composer against a private, license-gated repository during the image build. Unused services can omit it."
+        required: false
+      GRAPHQL_JWT_AUTH_SECRET_KEY:
+        required: true
 
 jobs:
   building:
@@ -59,10 +64,12 @@ jobs:
 
     env:
       CI: true
+      DOCKER_BUILDKIT: 1
       GCP_PROJECT_ID: ${{inputs.gcp_project_id}}
       ARTIFACT_REGISTRY_HOST: "${{inputs.artifact_registry_region}}-docker.pkg.dev"
       ARTIFACT_REGISTRY_REPO: "${{inputs.artifact_registry_repo}}"
       ROBOTS: ${{inputs.robots}}
+      COMPOSER_AUTH: ${{ secrets.COMPOSER_AUTH }}
 
     outputs:
       project_name: ${{ steps.building.outputs.project_name }}
@@ -114,6 +121,7 @@ jobs:
             -t ${IMAGE_NAME}-$IMAGE_TAG \
             -t ${IMAGE_NAME}:pre-build \
             --build-arg ROBOTS=${ROBOTS} \
+            --secret id=composer_auth,env=COMPOSER_AUTH \
             -f Dockerfile_ci .
               
           docker image push ${IMAGE_NAME}-latest
@@ -146,6 +154,7 @@ jobs:
       IMAGE_TAG: ${{needs.building.outputs.image_tag}}
       WORDPRESS_DB_PASSWORD: ${{ secrets.WORDPRESS_DB_PASSWORD }}
       CRYPTOKEY: ${{ secrets.CRYPTOKEY }}
+      GRAPHQL_JWT_AUTH_SECRET_KEY: ${{ secrets.GRAPHQL_JWT_AUTH_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v6
@@ -204,6 +213,7 @@ jobs:
             --set serviceAccountEmail=${GKE_SERVICE_ACCOUNT} \
             --set secrets.WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD} \
             --set secrets.CRYPTOKEY=${CRYPTOKEY} \
+            --set secrets.GRAPHQL_JWT_AUTH_SECRET_KEY=${GRAPHQL_JWT_AUTH_SECRET_KEY} \
             $(if [ "${{ inputs.set_values }}" ]; then echo "--set ${{ inputs.set_values }}"; fi) \
             --wait --timeout=15m0s
 
