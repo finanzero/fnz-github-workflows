@@ -19,3 +19,20 @@ Create two new Backends:
 * be-prd-neg-f5-01: standard back end, with CDN configured (to handle Next and WP requests) 
 * be-prd-neg-f5-02: APIs back end, with CDN disabled and focused on all API services
 
+## Update keepalive
+
+## beta
+kubectl -n default annotate ingress master-api-beta nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n default annotate ingress master-ghub-beta nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n default annotate ingress master-hub-beta nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n default annotate ingress master-hub-beta-finan0 nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n finanvc annotate ingress finanvc-nginx-ingress-resource-f5 nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n lia annotate ingress lia-nginx-ingress-resource-ws nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+
+## prod
+kubectl -n default annotate ingress master-api nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n default annotate ingress master-ghub nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n default annotate ingress master-hub nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n default annotate ingress master-hub-finan0 nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n finanvc annotate ingress finanvc-nginx-ingress-resource-f5 nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
+kubectl -n lia annotate ingress lia-nginx-ingress-resource-ws nginx.org/max-fails=0 nginx.org/keepalive=64 --overwrite
