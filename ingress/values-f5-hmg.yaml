@@ -4,9 +4,9 @@ controller:
   ingressClass:
     name: nginx-f5
     create: true
-    setAsDefaultIngress: false # Keep it false to avoid conflicts with existing NGINX Ingress Controller
+    setAsDefaultIngress: true # Alterado para true
   
-  # Use ClusterIP since we are behind the GCP Load Balancer
+    # Serviço interno mantendo a integração com o GCP NEG  
   service:
     create: true
     type: ClusterIP

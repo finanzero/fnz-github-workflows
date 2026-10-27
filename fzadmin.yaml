@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fzadmin
+  namespace: mis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fzadmin
+  template:
+    metadata:
+      labels:
+        app: fzadmin
+    spec:
+      serviceAccountName: mis-sa
+      containers:
+        - name: python
+          image: python:3.12-bookworm
+          # O "pulo do gato" para manter o container vivo:
+          stdin: true
+          tty: true
+          # Opcional: define onde você vai cair ao abrir o terminal
+          workingDir: /app
+          ports:
+            - containerPort: 80
