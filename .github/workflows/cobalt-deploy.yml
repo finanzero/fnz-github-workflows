@@ -58,6 +58,9 @@ on:
         required: true
       GCP_ACCOUNT_KEY:
         required: true
+      # Optional: only callers behind the Cloud Armor origin check pass it.
+      WP_ORIGIN_SECRET:
+        required: false
 
 jobs:
   building:
@@ -123,6 +126,7 @@ jobs:
           echo "WP_USER=${{ inputs.WP_USER }}" >> .env
           echo "CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}" >> .env
           echo "WP_PASSWORD=${{ secrets.WP_PASSWORD }}" >> .env
+          if [ -n "${{ secrets.WP_ORIGIN_SECRET }}" ]; then echo "WP_ORIGIN_SECRET=${{ secrets.WP_ORIGIN_SECRET }}" >> .env; fi
           echo "GOOGLE_SERVICE_ACCOUNT_KEY=${{ secrets.GCP_ACCOUNT_KEY }}" >> .env
           echo "GCP_PROJECT_ID=${{ inputs.gcp_project_id }}" >> .env
           echo "GCP_URL_MAP_NAME=${{ inputs.gcp_url_map_name }}" >> .env
