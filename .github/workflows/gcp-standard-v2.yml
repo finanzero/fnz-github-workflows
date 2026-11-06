@@ -263,7 +263,7 @@ jobs:
             $(if [ -n "${{ secrets.CRYPTO_KEY }}" ]; then echo "--set-string secrets.CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}"; fi) \
             $(if [ -n "${{ secrets.TURNSTILE_SECRET_KEY }}" ]; then echo "--set-string secrets.TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}"; fi) \
             --set-file secrets.MONGODB_URI=$RUNNER_TEMP/mongodb_uri \
-            --wait --timeout=5m0s --atomic --debug
+            --wait --timeout=5m0s --atomic
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
 
