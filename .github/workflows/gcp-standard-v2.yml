@@ -75,6 +75,9 @@ on:
       MONGODB_URI:
         description: "Full MongoDB connection string, delivered to the app as the MONGODB_URI environment variable"
         required: true
+      FNZ_API:
+        description: "Finanzero API credentials as JSON, delivered to the app as the FNZ_API environment variable"
+        required: false
 
 jobs:
   building:
@@ -238,6 +241,7 @@ jobs:
         env:
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SA_JSON }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          FNZ_API: ${{ secrets.FNZ_API }}
         run: |
           # a secret missing in the caller repo arrives as an empty string; abort before helm touches the release
           if [ -z "$MONGODB_URI" ]; then
@@ -246,6 +250,7 @@ jobs:
           fi
           # --set-file: Mongo URIs carry commas/&/? that --set would split or the shell would expand
           printf '%s' "$MONGODB_URI" > "$RUNNER_TEMP/mongodb_uri"
+          if [ -n "$FNZ_API" ]; then printf '%s' "$FNZ_API" > "$RUNNER_TEMP/fnz_api"; fi
           helm upgrade -i \
             ${PROJECT_NAME} chart/ \
             -n ${K8S_NAMESPACE} --create-namespace \
@@ -263,6 +268,7 @@ jobs:
             $(if [ -n "${{ secrets.CRYPTO_KEY }}" ]; then echo "--set-string secrets.CRYPTO_KEY=${{ secrets.CRYPTO_KEY }}"; fi) \
             $(if [ -n "${{ secrets.TURNSTILE_SECRET_KEY }}" ]; then echo "--set-string secrets.TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}"; fi) \
             --set-file secrets.MONGODB_URI=$RUNNER_TEMP/mongodb_uri \
+            $(if [ -n "$FNZ_API" ]; then echo "--set-file secrets.FNZ_API=$RUNNER_TEMP/fnz_api"; fi) \
             --wait --timeout=5m0s --atomic --debug
 
           kubectl get services -n ${K8S_NAMESPACE} -o wide
